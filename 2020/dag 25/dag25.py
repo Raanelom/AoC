@@ -43,7 +43,7 @@ def calculate_encryption_key(sn, loop_size):
 
 def solution():
     card_pk, door_pk = read_input_file()
-    #card_pk, door_pk = [5764801, 17807724]
+    # card_pk, door_pk = [5764801, 17807724]
     # loop sizes
     card_loopsize = determine_loop_size(card_pk)
     door_loopsize = determine_loop_size(door_pk)
