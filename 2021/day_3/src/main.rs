@@ -73,10 +73,7 @@ fn calculate_life_support_rating(diagnostic_report: DiagnosticReport, entry_size
         }
         if co2_scrubber_report_entries.iter().count() > 1 {
             co2_scrubber_report_entries = reduce(co2_scrubber_report_entries, n, false);
-        }
-
-        
-        
+        }        
     }
     assert_eq!(oxygen_report_entries.iter().count(), 1);
     assert_eq!(co2_scrubber_report_entries.iter().count(), 1);
