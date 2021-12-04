@@ -11,15 +11,16 @@ pub mod input_operations {
 
     pub fn split_lines(input: &String) -> std::iter::Peekable<std::str::Lines>
     {
-        input
-            .lines()
-            .peekable()
+        input.lines().peekable()
+    }
+
+    pub fn split_double_newlines(input: &String) -> std::iter::Peekable<std::str::Split<&str>>
+    {
+        input.split("\n\n").peekable()
     }
 
     pub fn split_whitespace(input: &String) -> std::iter::Peekable<std::str::SplitWhitespace>
     {
-        input
-            .split_whitespace()
-            .peekable()
+        input.split_whitespace().peekable()
     }
 }
