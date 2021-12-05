@@ -30,18 +30,28 @@ impl BingoGame {
         }
     }
 
-    fn has_bingo(&self) -> bool {
-        let mut has_bingo: bool = false;
+    fn check_bingo(&self) -> Option<usize> {
+        let mut bingo_result: Option<usize> = None;
         for card in self.cards() {
-            has_bingo |= card.has_bingo()
+            if let Some(bingo) = card.check_bingo() {
+                bingo_result = Some(bingo);
+            }
         }
-        has_bingo
+        bingo_result
     }
 }
 
 impl BingoCard {
+    fn card(&self) -> std::slice::Iter<'_, usize> {
+        self.card.iter()
+    }
+
+    fn crossed_number_positions(&self) -> std::slice::Iter<'_, usize> {
+        self.crossed_number_positions.iter()
+    }
+
     fn cross_number(&mut self, number: &usize) {
-        let position = self.card.iter().position(|x| x == number);
+        let position = self.card().position(|x| x == number);
         match position {
             Some(hit) => {
                 self.crossed_number_positions.push(hit); 
@@ -51,22 +61,30 @@ impl BingoCard {
         };
     }
 
-    fn has_bingo(&self) -> bool {
+    fn compute_sum(&self) -> usize {
+        let mut sum: usize = 0;
+        for i in self.crossed_number_positions() {
+            sum += self.card[*i];
+        }
+        sum = self.card().sum::<usize>() - sum;
+        return sum;
+    }
+
+    fn check_bingo(&self) -> Option<usize> {
         for i in 0..self.card_width {
             let mut has_bingo: bool = true;
             HORIZONTAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + (&i * self.card_width))));
             if has_bingo {
                 println!("horizontal bingo!");
-                // TODO: return bingo sum
-                return has_bingo;
+                return Some(self.compute_sum());
             }
         }
         for i in 0..self.card_height {
             let mut has_bingo: bool = true;
             VERTICAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + (&i * self.card_height))));
             if has_bingo {
-                println!("vertical bingo!");
-                return has_bingo;
+                println!("horizontal bingo!");
+                return Some(self.compute_sum());
             }
         }
         // let mut has_bingo: bool = true;
@@ -81,7 +99,7 @@ impl BingoCard {
         //     println!("diagonal bingo (topright bottomleft)!");
         //     return has_bingo;
         // }
-        false
+        return None
         // TODO: check for bingo
         // If 5 subsequent numbers are crossed
         // If the diagonals are crossed
@@ -131,7 +149,9 @@ fn collect_bingo_cards(mut input: std::iter::Peekable<std::str::Split<&str>>) ->
 fn play_bingo(numbers: Vec<usize>, bingo_game: &mut BingoGame) {
     for lucky_number in numbers {
         bingo_game.cross_number(&lucky_number);
-        if bingo_game.has_bingo() {
+        if let Some(bingo_sum) = bingo_game.check_bingo() {
+            println!("bingo! Sum is {}", bingo_sum);
+            println!("bingo! bingo is {}", bingo_sum*lucky_number);
             break;
         }
     }
