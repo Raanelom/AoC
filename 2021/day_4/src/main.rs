@@ -24,17 +24,23 @@ impl BingoGame {
         self.cards.iter()
     }
 
+    fn remove_card(&mut self, card_index: usize) {
+        &mut self.cards.remove(card_index);
+    }
+
+
     fn cross_number(&mut self, number: &usize) {
         for card in &mut self.cards {
             card.cross_number(number);
         }
     }
 
-    fn check_bingo(&self) -> Option<usize> {
-        let mut bingo_result: Option<usize> = None;
-        for card in self.cards() {
-            if let Some(bingo) = card.check_bingo() {
-                bingo_result = Some(bingo);
+    fn check_bingo(&self) -> Option<(usize, usize)> {
+        let mut bingo_result: Option<(usize, usize)> = None;
+        for (card_index, card) in self.cards().enumerate() {
+            bingo_result = match card.check_bingo() {
+                Some(bingo) => Some((bingo, card_index)),
+                None => bingo_result
             }
         }
         bingo_result
@@ -52,13 +58,9 @@ impl BingoCard {
 
     fn cross_number(&mut self, number: &usize) {
         let position = self.card().position(|x| x == number);
-        match position {
-            Some(hit) => {
-                self.crossed_number_positions.push(hit); 
-                println!("number {} at position {:?}", number, position);
-            },
-            None => println!("no match found")
-        };
+        if let Some(hit) = position {
+            self.crossed_number_positions.push(hit); 
+        }
     }
 
     fn compute_sum(&self) -> usize {
@@ -70,22 +72,26 @@ impl BingoCard {
         return sum;
     }
 
-    fn check_bingo(&self) -> Option<usize> {
+    fn check_bingo(&self) -> Option<Vec<usize>> {
+        let mut bingo_results: Vec<usize> = vec![];
         for i in 0..self.card_width {
             let mut has_bingo: bool = true;
             HORIZONTAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + (&i * self.card_width))));
             if has_bingo {
                 println!("horizontal bingo!");
-                return Some(self.compute_sum());
+                bingo_results.push(self.compute_sum());
             }
         }
         for i in 0..self.card_height {
             let mut has_bingo: bool = true;
-            VERTICAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + (&i * self.card_height))));
+            VERTICAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + &i)));
             if has_bingo {
-                println!("horizontal bingo!");
-                return Some(self.compute_sum());
+                println!("vertical bingo!");
+                bingo_results.push(self.compute_sum());
             }
+        }
+        if bingo_results.iter().count() > 0 {
+            return Some(bingo_results);
         }
         // let mut has_bingo: bool = true;
         // DIAGONAL_BINGO_TOPLEFT_BOTTOMRIGHT.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(item));
@@ -120,8 +126,9 @@ fn main() {
     
     println!("{:?}", numbers);
     println!("{:?}", bingo_game.cards);
-
-    play_bingo(numbers, &mut bingo_game);
+    let mut bingo_copy = bingo_game.clone();
+    play_bingo(&numbers, &mut bingo_game);
+    consolation_price(&numbers, &mut bingo_copy);
 }
 
 fn collect_bingo_cards(mut input: std::iter::Peekable<std::str::Split<&str>>) -> (BingoGame, Vec<usize>) {
@@ -146,13 +153,32 @@ fn collect_bingo_cards(mut input: std::iter::Peekable<std::str::Split<&str>>) ->
 }
 
 
-fn play_bingo(numbers: Vec<usize>, bingo_game: &mut BingoGame) {
+fn play_bingo(numbers: &Vec<usize>, bingo_game: &mut BingoGame) {
     for lucky_number in numbers {
         bingo_game.cross_number(&lucky_number);
-        if let Some(bingo_sum) = bingo_game.check_bingo() {
+        if let Some((bingo_sum,_)) = bingo_game.check_bingo() {
             println!("bingo! Sum is {}", bingo_sum);
             println!("bingo! bingo is {}", bingo_sum*lucky_number);
             break;
         }
     }
+}
+
+fn consolation_price(numbers: &Vec<usize>, bingo_game: &mut BingoGame) {
+    let mut last_bingo: usize = 0;
+    for lucky_number in numbers {
+        println!("Drawing number {}", lucky_number);
+        if bingo_game.cards().count() == 0 {
+            break;
+        }
+        bingo_game.cross_number(&lucky_number);
+        if let Some((bingo_sum, card_index)) = bingo_game.check_bingo() {
+            println!("bingo! Sum is {}", bingo_sum);
+            println!("bingo! Bingo is {}", bingo_sum*lucky_number);
+            last_bingo = bingo_sum*lucky_number;
+            bingo_game.remove_card(card_index);
+            println!("{} cards left", bingo_game.cards().count());
+        }
+    }
+    println!("consolation price: {}", last_bingo);
 }
