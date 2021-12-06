@@ -1,5 +1,5 @@
 use std::env;
-use util::input_operations::{read_file_to_string,split_double_newlines,split_lines,split_whitespace};
+use util::input_operations::{read_file_to_string,split_double_newlines,split_lines};
 
 #[derive(Debug,Clone)]
 struct BingoCard {
@@ -14,10 +14,8 @@ struct BingoGame {
     cards: Vec<BingoCard>
 }
 
-const HORIZONTAL_BINGO_VECTOR: [usize; 5] = [0, 1, 2, 3, 4]; // TODO: create scalar vector
+const HORIZONTAL_BINGO_VECTOR: [usize; 5] = [0, 1, 2, 3, 4];
 const VERTICAL_BINGO_VECTOR: [usize; 5] = [0, 5, 10, 15, 20];
-// const DIAGONAL_BINGO_TOPRIGHT_BOTTOMLEFT: [usize; 5]  = [4, 8, 12, 16, 20];
-// const DIAGONAL_BINGO_TOPLEFT_BOTTOMRIGHT: [usize; 5] = [0, 6, 12, 18, 24];
 
 impl BingoGame {
     fn cards(&self) -> std::slice::Iter<'_, BingoCard> {
@@ -35,15 +33,15 @@ impl BingoGame {
         }
     }
 
-    fn check_bingo(&self) -> Option<(usize, usize)> {
-        let mut bingo_result: Option<(usize, usize)> = None;
+    fn check_bingo(&self) -> Vec<(usize, usize)> {
+        let mut bingo_result: Vec<(usize, usize)> = vec![];
         for (card_index, card) in self.cards().enumerate() {
-            bingo_result = match card.check_bingo() {
-                Some(bingo) => Some((bingo, card_index)),
-                None => bingo_result
+            if let Some(bingo) = card.check_bingo() {
+                bingo_result.push((bingo, card_index));
             }
         }
-        bingo_result
+        bingo_result.sort_by(|a, b| b.1.cmp(&a.1));
+        return bingo_result;
     }
 }
 
@@ -72,45 +70,22 @@ impl BingoCard {
         return sum;
     }
 
-    fn check_bingo(&self) -> Option<Vec<usize>> {
-        let mut bingo_results: Vec<usize> = vec![];
+    fn check_bingo(&self) -> Option<usize> {
         for i in 0..self.card_width {
             let mut has_bingo: bool = true;
             HORIZONTAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + (&i * self.card_width))));
             if has_bingo {
-                println!("horizontal bingo!");
-                bingo_results.push(self.compute_sum());
+                return Some(self.compute_sum());
             }
         }
         for i in 0..self.card_height {
             let mut has_bingo: bool = true;
             VERTICAL_BINGO_VECTOR.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(&(item + &i)));
             if has_bingo {
-                println!("vertical bingo!");
-                bingo_results.push(self.compute_sum());
+                return Some(self.compute_sum());
             }
         }
-        if bingo_results.iter().count() > 0 {
-            return Some(bingo_results);
-        }
-        // let mut has_bingo: bool = true;
-        // DIAGONAL_BINGO_TOPLEFT_BOTTOMRIGHT.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(item));
-        // if has_bingo {
-        //     println!("diagonal bingo (topleft bottomright)!");
-        //     return has_bingo;
-        // }
-        // has_bingo = true;
-        // DIAGONAL_BINGO_TOPRIGHT_BOTTOMLEFT.iter().for_each(|item| has_bingo &= self.crossed_number_positions.contains(item));
-        // if has_bingo {
-        //     println!("diagonal bingo (topright bottomleft)!");
-        //     return has_bingo;
-        // }
         return None
-        // TODO: check for bingo
-        // If 5 subsequent numbers are crossed
-        // If the diagonals are crossed
-        // If 5 vertical subsequent numbers are crossed
-        
     }
 }
 
@@ -124,8 +99,6 @@ fn main() {
 
     let (mut bingo_game, numbers) = collect_bingo_cards(input);
     
-    println!("{:?}", numbers);
-    println!("{:?}", bingo_game.cards);
     let mut bingo_copy = bingo_game.clone();
     play_bingo(&numbers, &mut bingo_game);
     consolation_price(&numbers, &mut bingo_copy);
@@ -156,10 +129,9 @@ fn collect_bingo_cards(mut input: std::iter::Peekable<std::str::Split<&str>>) ->
 fn play_bingo(numbers: &Vec<usize>, bingo_game: &mut BingoGame) {
     for lucky_number in numbers {
         bingo_game.cross_number(&lucky_number);
-        if let Some((bingo_sum,_)) = bingo_game.check_bingo() {
-            println!("bingo! Sum is {}", bingo_sum);
-            println!("bingo! bingo is {}", bingo_sum*lucky_number);
-            break;
+        for correct_bingo in bingo_game.check_bingo() {
+            println!("bingo! bingo is {}", correct_bingo.0*lucky_number);
+            return;
         }
     }
 }
@@ -167,17 +139,14 @@ fn play_bingo(numbers: &Vec<usize>, bingo_game: &mut BingoGame) {
 fn consolation_price(numbers: &Vec<usize>, bingo_game: &mut BingoGame) {
     let mut last_bingo: usize = 0;
     for lucky_number in numbers {
-        println!("Drawing number {}", lucky_number);
         if bingo_game.cards().count() == 0 {
             break;
         }
         bingo_game.cross_number(&lucky_number);
-        if let Some((bingo_sum, card_index)) = bingo_game.check_bingo() {
-            println!("bingo! Sum is {}", bingo_sum);
-            println!("bingo! Bingo is {}", bingo_sum*lucky_number);
+        for correct_bingo in bingo_game.check_bingo() {
+            let bingo_sum = correct_bingo.0;
             last_bingo = bingo_sum*lucky_number;
-            bingo_game.remove_card(card_index);
-            println!("{} cards left", bingo_game.cards().count());
+            bingo_game.remove_card(correct_bingo.1);
         }
     }
     println!("consolation price: {}", last_bingo);
