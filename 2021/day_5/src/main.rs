@@ -97,11 +97,6 @@ fn main() {
         .collect::<Vec<LineSegment>>();
 
     determine_line_collision(line_segments);
-
-    // TODO:
-    // 1. Filter non-line-elements
-    // 2. For each line, determine the direction
-    // 3. For each line, determine the length
 }
 
 fn determine_line_collisions(line_diagram: HashMap<(usize, usize), usize>) {
