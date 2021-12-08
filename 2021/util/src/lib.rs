@@ -3,7 +3,7 @@ pub mod input_operations {
     use std::fs;
 
     pub fn read_file_to_string(filename: &std::string::String) -> String {
-        println!("In file {}", filename);
+        println!("Read file '{}'", filename);
     
         fs::read_to_string(filename)
             .expect("Something went wrong reading the file")

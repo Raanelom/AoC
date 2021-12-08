@@ -2,12 +2,17 @@ use std::env;
 use util::input_operations::{read_file_to_string,split_lines};
 use std::collections::HashMap;
 
+#[derive(Debug)]
+struct Direction {
+    x_positive: bool,
+    y_positive: bool
+}
 
 #[derive(Debug)]
 enum Orientation {
     Horizontal,
     Vertical,
-    Diagonal
+    Diagonal(Direction)
 }
 
 #[derive(Debug)]
@@ -30,13 +35,18 @@ impl LineSegment {
             end: end_coord,
             orientation: if start_coord.0 == end_coord.0 { Orientation::Vertical } 
                 else if start_coord.1 == end_coord.1 { Orientation::Horizontal } 
-                else { Orientation::Diagonal }
+                else { 
+                    Orientation::Diagonal(Direction {
+                        x_positive: start_coord.0 < end_coord.0,
+                        y_positive: start_coord.1 < end_coord.1,
+                    }) 
+                }
         }
     }
 
     fn line_coordinates(&self) -> Vec<(usize, usize)> {
         let mut in_between = Vec::new();
-        match self.orientation {
+        match &self.orientation {
             Orientation::Horizontal => {
                 // TODO: worry about the direction
                 for x in std::cmp::min(self.start.0, self.end.0)..=std::cmp::max(self.start.0, self.end.0) {
@@ -49,10 +59,21 @@ impl LineSegment {
                     in_between.push((self.start.0, y));
                 }
             }
-            Orientation::Diagonal => {
-                // Probably we have to implements this in the next part
-                for y in std::cmp::min(self.start.1, self.end.1)..=std::cmp::max(self.start.1, self.end.1) {
-                    in_between.push((self.start.0, y));
+            Orientation::Diagonal(direction) => {
+                let min_y = std::cmp::min(self.start.1, self.end.1);
+                let number_of_points = std::cmp::max(self.start.1, self.end.1) - min_y;
+                if (direction.x_positive && direction.y_positive) 
+                    || (!direction.x_positive && !direction.y_positive) {
+                    let min_x = std::cmp::min(self.start.0, self.end.0);
+                    for i in 0..=number_of_points {
+                        in_between.push((min_x+i, min_y+i));
+                    }
+                }
+                else {
+                    let max_x = std::cmp::max(self.start.0, self.end.0);
+                    for i in 0..=number_of_points {
+                        in_between.push((max_x-i, min_y+i));
+                    }
                 }
             }
         }
