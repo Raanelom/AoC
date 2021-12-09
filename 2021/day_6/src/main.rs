@@ -1,57 +1,59 @@
 use std::env;
-use util::input_operations::{read_file_to_string,split_lines};
-use std::collections::LinkedList;
+use util::input_operations::{read_file_to_string};
+use std::collections::HashMap;
 
 struct Lanternfish {
-    internal_timer: u8,
-    children: LinkedList<Lanternfish>
+    internal_timer: u8
 }
 
 impl Lanternfish {
     fn new(internal_timer: u8) -> Lanternfish {
         Lanternfish {
-            internal_timer: internal_timer,
-            children: LinkedList::new()
+            internal_timer: internal_timer
         }
     }
 
-    fn next_day(&mut self) {
-        for child in self.children.iter_mut() {
-            child.next_day();
+    fn determine_more_children(lanternfish_prediction: &mut HashMap<usize, usize>, days: usize) -> usize {
+        if lanternfish_prediction.contains_key(&days) {
+            return *lanternfish_prediction.get(&days).unwrap();
         }
-        if self.internal_timer == 0 {
-            self.children.push_back(Lanternfish::new(8));
-            self.internal_timer = 6;
-        } 
-        else {
-            self.internal_timer = self.internal_timer - 1;
+        let mut children_remaining = 1 + (days / 7);
+        let mut remaining_days = days;
+        while remaining_days >= 9 {
+            children_remaining += Lanternfish::determine_more_children(lanternfish_prediction, remaining_days - 9);
+            remaining_days -= 7;
         }
+        lanternfish_prediction.insert(days, children_remaining);
+        children_remaining
     }
 
-    fn family_size(&self) -> usize {
-        let mut size = 1; // Start with counting yourself
-        for child in self.children.iter() {
-            size += child.family_size();
+    fn determine_children(&self, lanternfish_prediction: &mut HashMap<usize, usize>, days: usize) -> usize {
+        // Correct the number of days (1-indexed instead of 0-indexed)
+        let days = days - 1;
+        let next_child = usize::from(self.internal_timer);
+        if days < next_child {
+            return 0;
         }
-        size
+        let mut remaining_days = days - next_child;
+        let mut children_remaining = 1 + (remaining_days / 7);
+        while remaining_days >= 9 {
+            children_remaining += Lanternfish::determine_more_children(lanternfish_prediction, remaining_days - 9);
+            remaining_days -= 7;
+        }
+        return children_remaining;
+        
     }
-
-    // fn determine_children(days: usize) {
-    //     let next_child = self.internal_timer;
-    //     let children_remaining = days - next_child 
-    // }
 }
 
-fn make_children(days: usize, lanternfish_family: &mut Vec<Lanternfish>) -> usize {
-    for _i in 0..days {
-        for lanternfish in lanternfish_family.iter_mut() {
-            lanternfish.next_day();
-        }
-    }
-    lanternfish_family
+fn count_family(days: usize, lanternfish_family: &mut Vec<Lanternfish>) -> usize {
+    let mut latnernfish_prediction = HashMap::<usize, usize>::new();
+    let lanternfish_family_size = lanternfish_family
         .iter()
-        .map(|l| l.family_size())
-        .sum::<usize>()
+        .map(|l| l.determine_children(&mut latnernfish_prediction, days))
+        .sum::<usize>() 
+        + lanternfish_family.iter().count();
+    println!("{}", lanternfish_family_size);
+    lanternfish_family_size
 }
 
 fn main() {
@@ -66,6 +68,5 @@ fn main() {
         .map(|l| Lanternfish::new(l.parse().unwrap()))
         .collect();
 
-    let family_size = make_children(256, &mut lanternfish_family);
-    println!("{}", family_size);
+    count_family(256, &mut lanternfish_family);
 }
