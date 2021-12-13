@@ -23,4 +23,9 @@ pub mod input_operations {
     {
         input.split_whitespace().peekable()
     }
+
+    pub fn split_chars(input: &String) -> std::iter::Peekable<std::str::Chars>
+    {
+        input.chars().peekable()
+    }
 }
