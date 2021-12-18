@@ -41,8 +41,12 @@ impl RegexBuilder {
         self.regex_chunks.iter().map(|x| x.generate_regex(group_names.next().unwrap())).collect::<Vec<String>>().join("|")
     }
 
-    fn generate_regex(&self) -> String {
-        [r"(?<re>", &self.concat_children(), ")"].join("")
+    fn generate_regex_string(&self) -> String {
+        [r"(?<re>", &self.concat_children(), ")+"].join("")
+    }
+    
+    fn generate_regex(&self) -> Regex {
+        Regex::new(&self.generate_regex_string()).unwrap()
     }
 }
 
@@ -59,19 +63,14 @@ impl RegexChunk {
             else { self.opening_bracket.to_string() };
         let closing_bracket = 
             if self.closing_bracket == ']' { String::from(r"\]") } 
-            else { self.opening_bracket.to_string() };
+            else { self.closing_bracket.to_string() };
         return [r"(?<", groupname, ">", &format!(r"\{}", self.opening_bracket), 
             r"(?:(?> [^", &opening_bracket, &closing_bracket, r"]+ )|\g<re>)*", 
             &format!(r"\{}", self.closing_bracket), r")"].join("");
     }
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        panic!("Expected a filename as argument");
-    }
-    let input = read_file_to_string(&args[1]);
+fn generate_builders() -> Vec<RegexBuilder> {
     let opening_brackets = ['(', '[', '{', '<'];
     let closing_brackets = [')', ']', '}', '>'];
     // Determine basis-regex
@@ -93,33 +92,91 @@ fn main() {
             regex_builders.push(RegexBuilder::new(SYNTAX_ERROR_SCORE_MAP[&closing_bracket], regex_chunks))
         }
     }
-    let parentheses_a = RegexChunk {
-        opening_bracket: '(',
-        closing_bracket: ')'
-    };
-    let correct_parentheses_a = parentheses_a.generate_regex("a");
-    let correct_parentheses_b = r"(?<b>\[(?:(?> [^\[\]]+ )|\g<re>)*\])";
-    let correct_parentheses_c = r"(?<c>\{(?:(?> [^{}]+ )|\g<re>)*\})";
-    let correct_parentheses_d = r"(?<d>\<(?:(?> [^<>]+ )|\g<re>)*\>)";
-    let incorrect_parentheses_a = r"(?<e>\((?:(?> [^(\]]+ )|\g<re>)*\])";
-    let correct_expression = [r"(?<re>", &correct_parentheses_a, "|", correct_parentheses_b, "|", correct_parentheses_c, "|", correct_parentheses_d, "|", incorrect_parentheses_a, ")"].join("");
-    let correct_expression = regex_builders[0].generate_regex();
-    let regex = Regex::new(&correct_expression).unwrap();
-    let string = "(({([{}])<><>[]}))";
-    let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-    // [<>({}){}[([])<>]]
-    match regex.captures(string) {
-        Some(caps) => {
-            println!("match at {}", caps.offset());
-            for (i, cap) in caps.iter_pos().enumerate() {
-                match cap {
-                    Some(pos) => println!("{}: {:?}", i, pos),
-                    None => println!("{}: did not capture", i),
-                }
-            }
+    return regex_builders;
+}
+
+fn scan_callback<'t>(n: i32, caps: Captures<'t>) -> bool {
+    println!("scan: {}", n);
+    println!("match at {}", caps.offset());
+
+    for (i, cap) in caps.iter_pos().enumerate() {
+        match cap {
+            Some(pos) => println!("{}: {:?}", i, pos),
+            None => println!("{}: did not capture", i),
         }
-        None => println!("search fail"),
     }
+
+    true
+}
+
+fn determine_error_score(regex_builders: Vec<RegexBuilder>) {
+    for regex_builder in regex_builders {
+        let string = "(({([{}])<><>[]}))";
+        let test_string = "[({(<(())[]>[[{[]{<()<>>";
+        let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
+        regex_builder.generate_regex().scan(test_string, scan_callback)
+            // Some(caps) => {
+            //     // We have at least one match
+            //     println!("match at {}", caps.offset());
+            //     for (i, cap) in caps.iter_pos().enumerate() {
+            //         match cap {
+            //             Some(pos) => println!("{}: {:?}", i, pos),
+            //             None => println!("{}: did not capture", i),
+            //         }
+            //     }
+            // }
+            // None => println!("search fail"),
+        ;
+    }
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        panic!("Expected a filename as argument");
+    }
+    let input = read_file_to_string(&args[1]);
+
+    let regex_builders = generate_builders();
+
+    determine_error_score(regex_builders);
+        
+    // for regex_builder in regex_builders {
+    //     let string = "(({([{}])<><>[]}))";
+    //     let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
+    //     match regex_builder.generate_regex().captures(string) {
+    //         Some(caps) => {
+    //             println!("match at {}", caps.offset());
+    //             for (i, cap) in caps.iter_pos().enumerate() {
+    //                 match cap {
+    //                     Some(pos) => println!("{}: {:?}", i, pos),
+    //                     None => println!("{}: did not capture", i),
+    //                 }
+    //             }
+    //         }
+    //         None => println!("search fail"),
+    //     }
+
+    // }
+    // let incorrect_parentheses_a = r"(?<e>\((?:(?> [^(\]]+ )|\g<re>)*\])";
+    // let correct_expression = [r"(?<re>", &correct_parentheses_a, "|", correct_parentheses_b, "|", correct_parentheses_c, "|", correct_parentheses_d, "|", incorrect_parentheses_a, ")"].join("");
+    // let correct_expression = regex_builders[0].generate_regex();
+    // let regex = Regex::new(&correct_expression).unwrap();
+    // let string = "(({([{}])<><>[]}))";
+    // let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
+    // // [<>({}){}[([])<>]]
+    // match regex.captures(string) {
+    //     Some(caps) => {
+    //         println!("match at {}", caps.offset());
+    //         for (i, cap) in caps.iter_pos().enumerate() {
+    //             match cap {
+    //                 Some(pos) => println!("{}: {:?}", i, pos),
+    //                 None => println!("{}: did not capture", i),
+    //             }
+    //         }
+    //     }
+    //     None => println!("search fail"),
+    // }
 
 }
 
