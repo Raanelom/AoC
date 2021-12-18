@@ -14,7 +14,6 @@ static SYNTAX_ERROR_SCORE_MAP: phf::Map<char, usize> = phf_map! {
 const REGEX_GROUP_NAMES: [&str; 5] = ["a", "b", "c", "d", "e"];
 
 
-
 #[derive(Debug,Clone)]
 struct RegexBuilder {
     regex_chunks: Vec<RegexChunk>,
@@ -70,9 +69,7 @@ impl RegexChunk {
     }
 }
 
-fn generate_builders() -> Vec<RegexBuilder> {
-    let opening_brackets = ['(', '[', '{', '<'];
-    let closing_brackets = [')', ']', '}', '>'];
+fn generate_builders(opening_brackets: [char; 4], closing_brackets: [char; 4]) -> Vec<RegexBuilder> {
     // Determine basis-regex
     let mut regex_builders = Vec::<RegexBuilder>::new();
     let mut regex_chunks: Vec<RegexChunk> = Vec::new();
@@ -95,39 +92,44 @@ fn generate_builders() -> Vec<RegexBuilder> {
     return regex_builders;
 }
 
-fn scan_callback<'t>(n: i32, caps: Captures<'t>) -> bool {
-    println!("scan: {}", n);
-    println!("match at {}", caps.offset());
-
-    for (i, cap) in caps.iter_pos().enumerate() {
-        match cap {
-            Some(pos) => println!("{}: {:?}", i, pos),
-            None => println!("{}: did not capture", i),
-        }
-    }
-
-    true
-}
-
-fn determine_error_score(regex_builders: Vec<RegexBuilder>) {
+fn determine_error_score(regex_builders: Vec<RegexBuilder>, ref_regex: Regex, input: &str) -> usize {
     for regex_builder in regex_builders {
-        let string = "(({([{}])<><>[]}))";
-        let test_string = "[({(<(())[]>[[{[]{<()<>>";
-        let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-        regex_builder.generate_regex().scan(test_string, scan_callback)
-            // Some(caps) => {
-            //     // We have at least one match
-            //     println!("match at {}", caps.offset());
-            //     for (i, cap) in caps.iter_pos().enumerate() {
-            //         match cap {
-            //             Some(pos) => println!("{}: {:?}", i, pos),
-            //             None => println!("{}: did not capture", i),
-            //         }
-            //     }
-            // }
-            // None => println!("search fail"),
-        ;
+        let mut closing_bracket_ranges: HashSet<usize> = HashSet::new();
+        for caps in regex_builder.generate_regex().captures_iter(input) {
+            // We have at least one match
+            println!("match at {}", caps.offset());
+            for (i, capture) in caps.iter_pos().enumerate() {
+                match capture {
+                    Some(pos_range) => {
+                        println!("{}: {:?}", i, pos_range);
+                        for pos in pos_range.0..pos_range.1 {
+                            closing_bracket_ranges.insert(pos);
+                        }
+                    },
+                    None => println!("{}: did not capture", i),
+                }
+            }
+        }
+        let mut is_valid = true;
+        for caps in ref_regex.captures_iter(input) {
+            // We have at least one match
+            println!("match at {}", caps.offset());
+            for (i, capture) in caps.iter_pos().enumerate() {
+                match capture {
+                    Some(pos_range) => {
+                        println!("{}: {:?}", i, pos_range);
+                        is_valid &= closing_bracket_ranges.contains(&pos_range.0);
+                    },
+                    None => println!("{}: did not capture", i),
+                }
+            }
+        }
+        println!("Is valid: {:?}", is_valid);
+        if is_valid {
+            return regex_builder.syntax_error_score
+        }        
     }
+    panic!("Expected an early return");
 }
 
 fn main() {
@@ -137,9 +139,21 @@ fn main() {
     }
     let input = read_file_to_string(&args[1]);
 
-    let regex_builders = generate_builders();
+    let opening_brackets = ['(', '[', '{', '<'];
+    let closing_brackets = [')', ']', '}', '>'];
+    let ref_regex_str = ["(", &closing_brackets
+        .iter()
+        .map(|x| [r"(\", &x.to_string(), ")"].join(""))
+        .collect::<Vec<String>>()
+        .join("|"), ")"].join("");
+    let ref_regex = Regex::new(&ref_regex_str).unwrap();
+    let regex_builders = generate_builders(opening_brackets, closing_brackets);
 
-    determine_error_score(regex_builders);
+    let string = "(({([{}])<><>[]}))";
+    let test_string = "[({(<(())[]>[[{[]{<()<>>";
+    let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
+    let score = determine_error_score(regex_builders, ref_regex, faulty_string);
+    println!("Score: {}", score);
         
     // for regex_builder in regex_builders {
     //     let string = "(({([{}])<><>[]}))";
