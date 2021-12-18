@@ -92,7 +92,7 @@ fn generate_builders(opening_brackets: [char; 4], closing_brackets: [char; 4]) -
     return regex_builders;
 }
 
-fn determine_error_score(regex_builders: Vec<RegexBuilder>, ref_regex: Regex, input: &str) -> usize {
+fn determine_error_score(regex_builders: &Vec<RegexBuilder>, ref_regex: &Regex, input: &str) -> usize {
     for regex_builder in regex_builders {
         let mut closing_bracket_ranges: HashSet<usize> = HashSet::new();
         for caps in regex_builder.generate_regex().captures_iter(input) {
@@ -138,6 +138,7 @@ fn main() {
         panic!("Expected a filename as argument");
     }
     let input = read_file_to_string(&args[1]);
+    let mut lines = split_lines(&input);
 
     let opening_brackets = ['(', '[', '{', '<'];
     let closing_brackets = [')', ']', '}', '>'];
@@ -152,45 +153,10 @@ fn main() {
     let string = "(({([{}])<><>[]}))";
     let test_string = "[({(<(())[]>[[{[]{<()<>>";
     let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-    let score = determine_error_score(regex_builders, ref_regex, faulty_string);
-    println!("Score: {}", score);
-        
-    // for regex_builder in regex_builders {
-    //     let string = "(({([{}])<><>[]}))";
-    //     let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-    //     match regex_builder.generate_regex().captures(string) {
-    //         Some(caps) => {
-    //             println!("match at {}", caps.offset());
-    //             for (i, cap) in caps.iter_pos().enumerate() {
-    //                 match cap {
-    //                     Some(pos) => println!("{}: {:?}", i, pos),
-    //                     None => println!("{}: did not capture", i),
-    //                 }
-    //             }
-    //         }
-    //         None => println!("search fail"),
-    //     }
-
-    // }
-    // let incorrect_parentheses_a = r"(?<e>\((?:(?> [^(\]]+ )|\g<re>)*\])";
-    // let correct_expression = [r"(?<re>", &correct_parentheses_a, "|", correct_parentheses_b, "|", correct_parentheses_c, "|", correct_parentheses_d, "|", incorrect_parentheses_a, ")"].join("");
-    // let correct_expression = regex_builders[0].generate_regex();
-    // let regex = Regex::new(&correct_expression).unwrap();
-    // let string = "(({([{}])<><>[]}))";
-    // let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-    // // [<>({}){}[([])<>]]
-    // match regex.captures(string) {
-    //     Some(caps) => {
-    //         println!("match at {}", caps.offset());
-    //         for (i, cap) in caps.iter_pos().enumerate() {
-    //             match cap {
-    //                 Some(pos) => println!("{}: {:?}", i, pos),
-    //                 None => println!("{}: did not capture", i),
-    //             }
-    //         }
-    //     }
-    //     None => println!("search fail"),
-    // }
-
+    let mut score = 0;
+    for line in lines {
+        score += determine_error_score(&regex_builders, &ref_regex, line);
+    }
+    println!("Score: {}", score);       
 }
 
