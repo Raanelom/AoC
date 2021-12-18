@@ -11,6 +11,14 @@ static SYNTAX_ERROR_SCORE_MAP: phf::Map<char, usize> = phf_map! {
     '>' => 25137
 };
 
+static PARENTHESES_REWARD_MAP: phf::Map<char, usize> = phf_map! {
+    '(' => 1,
+    '[' => 2,
+    '{' => 3,
+    '<' => 4
+};
+
+
 const REGEX_GROUP_NAMES: [&str; 5] = ["a", "b", "c", "d", "e"];
 
 
@@ -37,7 +45,10 @@ impl RegexBuilder {
 
     fn concat_children(&self) -> String {
         let mut group_names = REGEX_GROUP_NAMES.iter();
-        self.regex_chunks.iter().map(|x| x.generate_regex(group_names.next().unwrap())).collect::<Vec<String>>().join("|")
+        self.regex_chunks.iter()
+            .map(|x| x.generate_regex(group_names.next().unwrap()))
+            .collect::<Vec<String>>()
+            .join("|")
     }
 
     fn generate_regex_string(&self) -> String {
@@ -57,12 +68,14 @@ impl RegexChunk {
         }
     }
     fn generate_regex(&self, groupname: &str) -> String {
+        // Add an extra escape character
         let opening_bracket = 
             if self.opening_bracket == '[' { String::from(r"\[") } 
             else { self.opening_bracket.to_string() };
         let closing_bracket = 
             if self.closing_bracket == ']' { String::from(r"\]") } 
             else { self.closing_bracket.to_string() };
+        // Generate the actual regex
         return [r"(?<", groupname, ">", &format!(r"\{}", self.opening_bracket), 
             r"(?:(?> [^", &opening_bracket, &closing_bracket, r"]+ )|\g<re>)*", 
             &format!(r"\{}", self.closing_bracket), r")"].join("");
@@ -86,6 +99,7 @@ fn generate_builders(opening_brackets: [char; 4], closing_brackets: [char; 4]) -
             let mut regex_chunks = regex_chunks_base.clone();
             let closing_bracket = closing_brackets[(i+offset)%size];
             regex_chunks.push(RegexChunk::new(opening_brackets[i], closing_bracket));
+            // Add generated regex (base-regex + error-detection-regex) and determine syntax error score
             regex_builders.push(RegexBuilder::new(SYNTAX_ERROR_SCORE_MAP[&closing_bracket], regex_chunks))
         }
     }
@@ -97,39 +111,45 @@ fn determine_error_score(regex_builders: &Vec<RegexBuilder>, ref_regex: &Regex, 
         let mut closing_bracket_ranges: HashSet<usize> = HashSet::new();
         for caps in regex_builder.generate_regex().captures_iter(input) {
             // We have at least one match
-            println!("match at {}", caps.offset());
-            for (i, capture) in caps.iter_pos().enumerate() {
-                match capture {
-                    Some(pos_range) => {
-                        println!("{}: {:?}", i, pos_range);
-                        for pos in pos_range.0..pos_range.1 {
-                            closing_bracket_ranges.insert(pos);
-                        }
-                    },
-                    None => println!("{}: did not capture", i),
+            for capture in caps.iter_pos() {
+                if let Some(pos_range) = capture {
+                    for pos in pos_range.0..pos_range.1 {
+                        closing_bracket_ranges.insert(pos);
+                    }
                 }
             }
         }
         let mut is_valid = true;
         for caps in ref_regex.captures_iter(input) {
             // We have at least one match
-            println!("match at {}", caps.offset());
             for (i, capture) in caps.iter_pos().enumerate() {
-                match capture {
-                    Some(pos_range) => {
-                        println!("{}: {:?}", i, pos_range);
-                        is_valid &= closing_bracket_ranges.contains(&pos_range.0);
-                    },
-                    None => println!("{}: did not capture", i),
+                if let Some(pos_range) = capture {
+                    is_valid &= closing_bracket_ranges.contains(&pos_range.0);
                 }
             }
         }
-        println!("Is valid: {:?}", is_valid);
         if is_valid {
             return regex_builder.syntax_error_score
         }        
     }
     panic!("Expected an early return");
+}
+
+fn determine_autocompletion_reward(valid_lines: Vec<&str>, regex_builder: &RegexBuilder) -> usize {
+    let mut scores = Vec::new();
+    for line in valid_lines.iter() {
+        let mut score = 0;
+        for bracket_reward in regex_builder.generate_regex()
+            .replace_all(line, "")
+            .chars()
+            .map(|x| PARENTHESES_REWARD_MAP[&x])
+            .rev() {
+            score = (score * 5) + bracket_reward;
+        }
+        scores.push(score);
+    }
+    scores.sort();
+    return scores[scores.len()/2];
 }
 
 fn main() {
@@ -138,7 +158,7 @@ fn main() {
         panic!("Expected a filename as argument");
     }
     let input = read_file_to_string(&args[1]);
-    let mut lines = split_lines(&input);
+    let lines = split_lines(&input);
 
     let opening_brackets = ['(', '[', '{', '<'];
     let closing_brackets = [')', ']', '}', '>'];
@@ -149,14 +169,18 @@ fn main() {
         .join("|"), ")"].join("");
     let ref_regex = Regex::new(&ref_regex_str).unwrap();
     let regex_builders = generate_builders(opening_brackets, closing_brackets);
-
-    let string = "(({([{}])<><>[]}))";
-    let test_string = "[({(<(())[]>[[{[]{<()<>>";
-    let faulty_string = "[{[{({}]{}}([{[{{{}}([]";
-    let mut score = 0;
+    let mut total_score = 0;
+    let mut valid_lines = Vec::new();
     for line in lines {
-        score += determine_error_score(&regex_builders, &ref_regex, line);
+        let score = determine_error_score(&regex_builders, &ref_regex, line);
+        if score == 0 {
+            valid_lines.push(line);
+        }
+        total_score += determine_error_score(&regex_builders, &ref_regex, line);
     }
-    println!("Score: {}", score);       
-}
+    println!("Score: {}", total_score);
 
+    let reward = determine_autocompletion_reward(valid_lines, &regex_builders[0]);
+
+    println!("Reward: {}", reward);
+}
