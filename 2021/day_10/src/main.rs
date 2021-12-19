@@ -4,6 +4,10 @@ use std::collections::HashSet;
 use onig::*;
 use phf::phf_map;
 
+// https://github.com/kkos/oniguruma/blob/master/doc/RE
+// https://docs.rs/phf/latest/phf/
+// https://github.com/rust-onig/rust-onig/blob/main/onig/examples/scan.rs
+
 static SYNTAX_ERROR_SCORE_MAP: phf::Map<char, usize> = phf_map! {
     ')' => 3,
     ']' => 57,

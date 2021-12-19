@@ -55,8 +55,14 @@ impl Display {
     fn from_input(line: Vec<&str>) -> Display {
         assert_eq!(2, line.len());
         Display {
-            signal_patterns: line[0].split(" ").map(|x| Segment::from(x.chars().collect())).collect(),
-            output: line[1].split(" ").map(|x| Segment::from(x.chars().collect())).collect()
+            signal_patterns: line[0]
+                .split(" ")
+                .map(|x| Segment::from(x.chars().collect()))
+                .collect(),
+            output: line[1]
+                .split(" ")
+                .map(|x| Segment::from(x.chars().collect()))
+                .collect()
         }
     }
 
