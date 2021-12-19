@@ -1,6 +1,5 @@
 use std::env;
 use util::input_operations::{read_file_to_string,split_lines,split_chars};
-use std::collections::HashSet;
 
 #[derive(Debug,Clone)]
 struct OctopusGrid {
@@ -99,6 +98,61 @@ impl OctopusGrid {
             .map(|x| x.unwrap().index)
             .collect::<Vec<usize>>()
     }
+
+    fn increase_energy(&mut self) {
+        self.octopuses
+            .iter_mut()
+            .for_each(|x| x.increase_energy());
+    }
+
+    fn flash(&self) -> Vec<usize> {
+        let flashing_octopuses = self.octopuses
+            .iter()
+            .filter(|x| x.is_flash())
+            .map(|x| x.index)
+            .collect::<Vec<usize>>();
+        
+        return flashing_octopuses
+    }
+
+    fn try_flash_at_index(&mut self, index: usize) -> usize {
+        let mut total_flash = 0;
+        total_flash += self.octopuses[index].try_flash() as usize;
+        if total_flash > 0 {
+            total_flash += self.neighbours(index)
+                .iter()
+                .map(|x| self.try_flash_at_index(*x))
+                .sum::<usize>()
+        }
+        return total_flash
+            
+    }
+
+    fn next_step(&mut self) -> usize {
+        self.increase_energy();
+        let flashing_octopuses = self.flash();
+        let flash_count = flashing_octopuses
+            .iter()
+            .map(|x| self.try_flash_at_index(*x))
+            .sum::<usize>();
+        return flash_count
+    }
+
+    fn next_steps(&mut self, no_of_steps: usize) -> usize {
+        let mut flash_count = 0;
+        for _i in 0..no_of_steps {
+            flash_count += self.next_step();
+        }
+        return flash_count;
+    }
+
+    fn next_collective_flash(&mut self) -> usize {
+        let mut step = 1;
+        while self.next_step() < self.width * self.height {
+            step += 1;
+        }
+        return step;
+    }
 }
 
 impl Octopus {
@@ -107,6 +161,23 @@ impl Octopus {
             energy: energy,
             index: index
         }
+    }
+
+    fn increase_energy(&mut self) {
+        self.energy += 1;
+    }
+
+    fn is_flash(&self) -> bool {
+        return self.energy == 10;
+    }
+
+    fn try_flash(&mut self) -> bool {
+        if (1..=9).contains(&self.energy) {
+            self.energy += 1;
+        }
+        let is_flash = self.is_flash();
+        self.energy = self.energy % 10;
+        return is_flash;
     }
 }
 
@@ -121,6 +192,7 @@ fn main() {
     let mut octopus_grid = OctopusGrid::init();
     octopus_grid.read_input(&mut lines);
 
-    println!("{:?}", octopus_grid.neighbours(16));
-    
+    //let flash_count = octopus_grid.next_steps(100);
+    let next_collective_flash = octopus_grid.next_collective_flash();
+    println!("{}", next_collective_flash);
 }
