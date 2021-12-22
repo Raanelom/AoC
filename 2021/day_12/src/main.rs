@@ -1,6 +1,41 @@
 use std::env;
 use util::input_operations::{read_file_to_string,split_lines};
 use std::collections::HashSet;
+use itertools::Itertools;
+
+trait IsLowercase {
+    fn is_lowercase(&self) -> bool;
+}
+
+impl IsLowercase for &str {
+    fn is_lowercase(&self) -> bool {
+        self.bytes().all(|b| matches!(b, b'a'..=b'z'))
+    }
+}
+
+impl IsLowercase for String {
+    fn is_lowercase(&self) -> bool {
+        self.bytes().all(|b| matches!(b, b'a'..=b'z'))
+    }
+}
+
+trait HasDuplicates {
+    fn has_lowercase_duplicates(&self) -> bool;
+}
+
+impl HasDuplicates for Vec<String> {
+    fn has_lowercase_duplicates(&self) -> bool {
+        self
+            .iter()
+            .filter(|x| x.is_lowercase())
+            .filter(|x| self
+                .iter()
+                .filter(|y| x.eq(y))
+                .count() == 2
+            )
+            .count() == 2
+    }
+}
 
 #[derive(Debug,Clone,Hash,PartialEq,Eq)]
 struct Node {
@@ -45,29 +80,38 @@ impl Graph {
         }
     }
 
-
-    fn print_all_paths(&mut self, u: usize, d: usize, path: &mut Vec<String>, no_of_paths: &mut usize) {
-        let node_name = self.nodes[u].name.clone();
-        // Only small caves should be visited once
-        if node_name.bytes().all(|b| matches!(b, b'a'..=b'z')) {
-            self.nodes[u].is_visited = true;
-        }
+    fn print_all_paths(&mut self, current: usize, end: usize, path: &mut Vec<String>, no_of_paths: &mut usize) {
+        let node_name = self.nodes[current].name.clone();
+        // Small caves should be visited once, except for one small cave
+        //if node_name.is_lowercase() && (path.contains(&node_name) || path.has_lowercase_duplicates()) {
+            //self.nodes[current].is_visited = true;
+        //}
         path.push(node_name.clone());
 
-        if u == d {
+        if current == end {
             println!("{:?}", path);
             *no_of_paths += 1;
         }
         else {
-            for edge in self.edges.clone().iter().filter(|x| x.from.name.eq(&node_name)) {
-                if !self.nodes.iter().find(|x| x.name.eq(&edge.to.name)).unwrap().is_visited {
-                    let node_index = &self.nodes.iter().position(|x| x.name.eq(&edge.to.name)).unwrap();
-                    self.print_all_paths(*node_index, d, path, no_of_paths)
-                }
+            for edge in self.edges
+                .clone()
+                .iter()
+                .filter(|x| x.from.name.eq(&node_name)) {
+                // if !self.nodes.iter()
+                //     .find(|x| x.name.eq(&edge.to.name))
+                //     .unwrap()
+                //     .is_visited {
+                    let node_index = &self.nodes.iter()
+                        .position(|x| x.name.eq(&edge.to.name))
+                        .unwrap();
+                    if !(path.contains(&self.nodes[*node_index].name) && path.has_lowercase_duplicates()) || !&self.nodes[*node_index].name.is_lowercase() {
+                        self.print_all_paths(*node_index, end, path, no_of_paths)
+                    }
+                //}
             }
         }
         path.pop();
-        self.nodes[u].is_visited = false;
+        self.nodes[current].is_visited = false;
         
     }
 }
@@ -86,9 +130,13 @@ fn main() {
         .iter()
         .map(|x| vec![x.from.clone(), x.to.clone()])
         .flatten()
+        .unique()
         .collect::<Vec<Node>>();
-    // Also used invert edges
-    edges.extend(edges.iter().filter(|x| !x.from.name.eq("start") && !x.to.name.eq("end")).map(|x| Edge::new(x.to.clone(), x.from.clone())).collect::<HashSet<Edge>>());
+    // Also used inverted edges
+    edges.extend(edges.iter()
+        .filter(|x| !x.from.name.eq("start") && !x.to.name.eq("end"))
+        .map(|x| Edge::new(x.to.clone(), x.from.clone()))
+        .collect::<HashSet<Edge>>());
     let mut graph = Graph::new(nodes.clone(), edges);
     let paths = &mut Vec::<String>::new();
     let mut no_of_paths = 0;
