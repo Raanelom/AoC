@@ -97,22 +97,15 @@ impl Graph {
                 .clone()
                 .iter()
                 .filter(|x| x.from.name.eq(&node_name)) {
-                // if !self.nodes.iter()
-                //     .find(|x| x.name.eq(&edge.to.name))
-                //     .unwrap()
-                //     .is_visited {
                     let node_index = &self.nodes.iter()
                         .position(|x| x.name.eq(&edge.to.name))
                         .unwrap();
                     if !(path.contains(&self.nodes[*node_index].name) && path.has_lowercase_duplicates()) || !&self.nodes[*node_index].name.is_lowercase() {
                         self.print_all_paths(*node_index, end, path, no_of_paths)
                     }
-                //}
             }
         }
-        path.pop();
-        self.nodes[current].is_visited = false;
-        
+        path.pop();        
     }
 }
 
