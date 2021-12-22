@@ -39,8 +39,7 @@ impl HasDuplicates for Vec<String> {
 
 #[derive(Debug,Clone,Hash,PartialEq,Eq)]
 struct Node {
-    name: String,
-    is_visited: bool
+    name: String
 }
 
 #[derive(Debug,Clone,Hash,PartialEq,Eq)]
@@ -57,8 +56,7 @@ struct Graph {
 impl Node {
     fn new(name: &str) -> Node {
         Node {
-            name: String::from(name),
-            is_visited: false
+            name: String::from(name)
         }
     }
 }
@@ -69,6 +67,22 @@ impl Edge {
             from: from,
             to: to
         }
+    }
+
+    fn other_node(&self, this_node: &str) -> Option<&Node> {
+        if self.from.name.eq(&this_node) {
+            return Some(&self.to);
+        }
+        if self.to.name.eq(&this_node) {
+            return Some(&self.from);
+        }
+        return None
+    }
+
+    fn contains(&self, node_name: &str) -> bool {
+        return (self.to.name.eq(node_name) || self.from.name.eq(node_name)) 
+            && !self.other_node(node_name).unwrap().name.eq("start")
+            && !node_name.eq("end");
     }
 }
 
@@ -82,10 +96,6 @@ impl Graph {
 
     fn print_all_paths(&mut self, current: usize, end: usize, path: &mut Vec<String>, no_of_paths: &mut usize) {
         let node_name = self.nodes[current].name.clone();
-        // Small caves should be visited once, except for one small cave
-        //if node_name.is_lowercase() && (path.contains(&node_name) || path.has_lowercase_duplicates()) {
-            //self.nodes[current].is_visited = true;
-        //}
         path.push(node_name.clone());
 
         if current == end {
@@ -96,11 +106,12 @@ impl Graph {
             for edge in self.edges
                 .clone()
                 .iter()
-                .filter(|x| x.from.name.eq(&node_name)) {
+                .filter(|x| x.contains(&node_name)) {
                     let node_index = &self.nodes.iter()
-                        .position(|x| x.name.eq(&edge.to.name))
+                        .position(|x| x.name.eq(&edge.other_node(&node_name).unwrap().name))
                         .unwrap();
-                    if !(path.contains(&self.nodes[*node_index].name) && path.has_lowercase_duplicates()) || !&self.nodes[*node_index].name.is_lowercase() {
+                    if !(path.contains(&self.nodes[*node_index].name) && path.has_lowercase_duplicates()) 
+                        || !&self.nodes[*node_index].name.is_lowercase() {
                         self.print_all_paths(*node_index, end, path, no_of_paths)
                     }
             }
@@ -115,25 +126,22 @@ fn main() {
         panic!("Expected a filename as argument");
     }
     let input = read_file_to_string(&args[1]);
-    let mut edges = split_lines(&input)
+    // First determine the edges
+    let edges = split_lines(&input)
         .map(|x| x.split("-").collect::<Vec<&str>>())
         .map(|x| Edge::new(Node::new(x[0]), Node::new(x[1])))
         .collect::<HashSet<Edge>>();
+    // Then the nodes
     let nodes = edges
         .iter()
         .map(|x| vec![x.from.clone(), x.to.clone()])
         .flatten()
         .unique()
         .collect::<Vec<Node>>();
-    // Also used inverted edges
-    edges.extend(edges.iter()
-        .filter(|x| !x.from.name.eq("start") && !x.to.name.eq("end"))
-        .map(|x| Edge::new(x.to.clone(), x.from.clone()))
-        .collect::<HashSet<Edge>>());
-    let mut graph = Graph::new(nodes.clone(), edges);
-    let paths = &mut Vec::<String>::new();
+    let start_position = nodes.iter().position(|x| x.name == "start").unwrap();
+    let end_position = nodes.iter().position(|x| x.name == "end").unwrap();
+    let mut graph = Graph::new(nodes, edges);
     let mut no_of_paths = 0;
-    graph.print_all_paths(nodes.iter().position(|x| x.name == "start").unwrap(), 
-        nodes.iter().position(|x| x.name == "end").unwrap(), paths, &mut no_of_paths);
+    graph.print_all_paths(start_position, end_position, &mut Vec::<String>::new(), &mut no_of_paths);
     println!("{}", no_of_paths);
 }
