@@ -28,4 +28,43 @@ pub mod input_operations {
     {
         input.chars().peekable()
     }
+
+    pub trait StringOperations {
+        fn read_file_to_string(&self) -> String;
+        fn split_double_newlines(&self) -> std::str::Split<&str>;
+    }
+
+    macro_rules! impl_StringOperations {
+        (for $($t:ty),+) => {
+            $(impl StringOperations for $t {
+                fn read_file_to_string(&self) -> String {
+                    println!("Read file '{}'", &self);
+                
+                    fs::read_to_string(self)
+                        .expect("Something went wrong reading the file")
+                }
+        
+                fn split_double_newlines(&self) -> std::str::Split<&str> {
+                    self.split("\n\n")
+                }
+            })*
+        }
+    }
+    
+    impl_StringOperations!(for String, &str);
+
+    
+
+    // impl StringOperations for String {
+    //     fn read_file_to_string(&self) -> String {
+    //         println!("Read file '{}'", &self);
+        
+    //         fs::read_to_string(self)
+    //             .expect("Something went wrong reading the file")
+    //     }
+
+    //     fn split_double_newlines(&self) -> std::str::Split<&str> {
+    //         self.split("\n\n")
+    //     }
+    // }
 }
