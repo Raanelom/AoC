@@ -46,34 +46,18 @@ impl Manual {
             println!("Still folding");
         }
     }
-
+    
     fn fold_next(&mut self) -> bool {
         if let Some(next_instruction) = self.instructions.pop() {
-            //println!("{}", self.dot_sheet);
-            println!("{:?}", next_instruction);
-            
-            
             if next_instruction.0 == 'y' {
                 let upper_part = self.dot_sheet.slice(s![0..next_instruction.1, ..]);
                 let lower_part_reverse = self.dot_sheet.slice(s![(1+next_instruction.1)..self.dot_sheet.shape()[0];-1, ..]);
-                println!("`a.slice(s![0..{}, ..])` -> \n{}\n", 
-                    next_instruction.1, 
-                    upper_part);
-                println!("`a.slice(s![0..{}, ..])` -> \n{}\n", 
-                    next_instruction.1, 
-                    lower_part_reverse);
                 let combination = &upper_part*&lower_part_reverse;
                 self.dot_sheet = combination;
             }
             else if next_instruction.0 == 'x' {
                 let left_part = self.dot_sheet.slice(s![.., 0..next_instruction.1]);
                 let right_part_reverse = self.dot_sheet.slice(s![.., (1+next_instruction.1)..self.dot_sheet.shape()[1];-1]);
-                println!("`a.slice(s![0..{}, ..])` -> \n{}\n", 
-                    next_instruction.1, 
-                    left_part);
-                println!("`a.slice(s![0..{}, ..])` -> \n{}\n", 
-                    next_instruction.1, 
-                    right_part_reverse);
                 let combination = &left_part*&right_part_reverse;
                 self.dot_sheet = combination;
             }
@@ -105,7 +89,7 @@ fn main() {
         .collect::<Vec<_>>();
 
     let mut manual = Manual::read(&input[0], &input[1]);
-    manual.fold_next();
+    manual.fold_all();
     println!("Number of dots: {}", manual.count_dots());
-    //manual.fold_next();
+    println!("{:#?}", manual.dot_sheet);
 }
