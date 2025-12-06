@@ -1,0 +1,9 @@
+{
+    "name": "day_1",
+    "version": "1.0.0",
+    "main": "pipeline.ts",
+    "type": "module",
+    "scripts": {
+        "aoc": "node pipeline.ts"
+    }
+}
