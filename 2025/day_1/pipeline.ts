@@ -13,20 +13,18 @@ let passwordCount = 0;
 
 for (let dialCommand of dialCommands) {
     const [ direction, number ] = [ dialCommand[0], parseInt(dialCommand.slice(1)) ]
+    let remainder = number % 100;
+
     if (direction === "L") {
-        let remainder = number % 100;
         passwordCount += (dial > 0 && (dial - remainder) <= 0) || (dial < 0 && (dial - remainder <= -100)) ? 1 : 0; 
-        passwordCount += Math.floor(number / 100);
 
         dial = dial - number
     } else {
-        let remainder = number % 100;
         passwordCount += (dial < 0 && (dial + remainder) >= 0) || (dial > 0 && (dial + remainder >= 100)) ? 1 : 0;
-        passwordCount += Math.floor(number / 100);
 
         dial = dial + number;
     }
-
+    passwordCount += Math.floor(number / 100);
     dial = dial % 100;
     // console.log("\nOperation is: ", direction + number);
     // console.log("Passwordcount is now ", passwordCount);
