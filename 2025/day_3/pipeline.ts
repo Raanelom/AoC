@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-const input: string[] = readFileSync('./example_input', 'utf-8').trim().split('\n');
+const input: string[] = readFileSync('./input', 'utf-8').trim().split('\n');
 
 // function maxDigit(no: number, step = 0): { digit: number, position: number } {
 //     if (no === 0) {
