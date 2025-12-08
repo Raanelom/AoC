@@ -16,18 +16,23 @@ function maxDigit(no: string, step = 0): { digit: number, position: number } {
 
 let joltage = 0;
 for (const no of input) {
-    console.log("\nNo", no);
-    let max = maxDigit(no);
-    let remainder = no.slice(max.position + 1);
-    if (!remainder.length) {
-        console.log("Equal length");
-        max = maxDigit(no.slice(0, -1), 1);
-        remainder = no.slice(max.position);
+    // console.log("\nNo", no);
+    let digitCountdown = 12;
+    const digits = [];
+    let remainder = no;
+    while (digitCountdown > 0) {
+        const max = maxDigit(remainder.slice(0, remainder.length - (digitCountdown - 1)));
+        digits.push(max);
+        // console.log(digits);
+        remainder = remainder.slice(max.position + 1);
+        // 818181911112111
+        digitCountdown -= 1;
     }
-    const nextMax = maxDigit(remainder);
-    // console.log(max, nextMax);
-    joltage += (max.digit * 10 + nextMax.digit);
+    digits.reverse();
+    // console.log(digits.map((n, index) => n.digit * Math.pow(10, index)).reduce((partialSum, a) => partialSum + a, 0));
+    joltage += digits.map((n, index) => n.digit * Math.pow(10, index)).reduce((partialSum, a) => partialSum + a, 0);
+
     
 }
-
 console.log(joltage);
+
