@@ -2,29 +2,6 @@ import { readFileSync } from 'fs';
 
 const input: string[] = readFileSync('./input', 'utf-8').trim().split('\n');
 
-// function maxDigit(no: number, step = 0): { digit: number, position: number } {
-//     if (no === 0) {
-//         return { digit: 0, position: step };
-//     }
-//     const remainder = no % 10;
-//     const nextDigit = maxDigit((no - remainder) / 10, step + 1);
-//     if (nextDigit.digit > remainder) {
-//         return nextDigit;
-//     }
-//     return { digit: remainder, position: step };
-// }
-
-// function mapToNumbers(str: string) {
-//     const chunkSize = 10;
-//     const chunks: number[] = [];
-//     for (let i = 0; i < str.length; i += chunkSize) {
-//         const chunk = parseInt(str.slice(i, i + chunkSize));
-//         chunks.push(chunk);
-//     }
-//     return chunks;
-// }
-
-
 function maxDigit(no: string, step = 0): { digit: number, position: number } {
     if (!no.length) {
         return { digit: 0, position: step };
