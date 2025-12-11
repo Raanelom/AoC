@@ -6,6 +6,7 @@ pkgs.mkShell {
     cargo
     rustfmt
     rust-analyzer
+    nodejs_24
   ];
 
   RUST_BACKTRACE = 1;
