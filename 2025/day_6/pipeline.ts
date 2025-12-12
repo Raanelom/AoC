@@ -1,9 +1,10 @@
 import { readFileSync } from 'fs';
 
-const input: string[] = readFileSync('./example_input', 'utf-8').trim().split('\n');
+const input: string[] = readFileSync('./input', 'utf-8').trim().split('\n');
 
-const operators = input[-1].split(new RegExp("[ ]+"));
-const numbers = input.slice(0, -1).map((row) => row.split(new RegExp("[ ]+")).map((no) => parseInt(no)));
+
+const operators = input.slice(-1).join("").split(new RegExp(/[ ]+/));
+const numbers = input.slice(0, -1).map((row) => row.trim().split(new RegExp(/[ ]+/)).map((no) => parseInt(no)));
 
 const ADD = "+";
 const MULTIPLY = "*";
@@ -35,8 +36,11 @@ const calc = (operator: string) => {
 
 let total = 0;
 for(let i = 0; i < numbers[0].length; i++) {
-    const selectedRange = numbers.filter((_, index) => i === index).flat(1);
+    // Use reduce instead of filter here
+    const selectedRange = numbers.reduce((previous, current) => {
+        return [...previous, current[i]];
+    }, []);
     total += calc(operators[i])(selectedRange)
-
 }
+
 console.log(total);
