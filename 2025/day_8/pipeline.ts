@@ -42,7 +42,7 @@ class Edge {
     }
 }
 
-const nodes: Vector[] = readFileSync('./example_input', 'utf-8')
+const nodes: Vector[] = readFileSync('./input', 'utf-8')
     .trim()
     .split('\n')
     .map((vector: string) => vector.split(",").map((no) => parseInt(no)))
@@ -52,32 +52,26 @@ const edges: Set<string> = new Set();
 
 for (const thisVector of nodes) {
     for (const otherVector of nodes.filter((v) => v !== thisVector)) {
-        // const thisDistances = graph.get(thisVector) || [];
-        // thisDistances.push({ to: otherVector, distance: thisVector.diff(otherVector)})
-        // graph.set(thisVector, thisDistances.sort((a, b) => a.distance - b.distance));
-
         const edge = new Edge(thisVector, otherVector);
         edges.add(edge.toKey());
     }
 }
 
-// const shortedDistance = [...graph].map((dist) => {
-//     return { from: dist[0], to: dist[1][0].to, dist: dist[1][0].distance };
-// }).sort((a, b) => a.dist - b.dist);
 
 const shortestEdges = [...edges].map((edge) => Edge.toValue(edge)).sort((a, b) => a.distance - b.distance);
 
 const circuits = [...nodes.map((vector) => [vector])];
 
-const NO_OF_CIRCUITS = 10;
+// const NO_OF_CIRCUITS = 1000; // Part A.
 
-for(let i = 0; i < NO_OF_CIRCUITS; i++) {
+let circuitSum = 0;
+
+// for(let i = 0; i < NO_OF_CIRCUITS; i++) { // Part A.
+while(circuits.length > 1) {
     const shortestEdge = shortestEdges.shift();
     if (!shortestEdge) {
         throw new Error("No more shortest edges left");
     }
-    // console.log("\n\nSTART with edge", i);
-    // console.log(shortestEdge);
     const vectors = shortestEdge.vectors;
     const from = circuits.find((c) => c.find((v) => v.equals(vectors[0])));
     if (!from) {
@@ -92,17 +86,21 @@ for(let i = 0; i < NO_OF_CIRCUITS; i++) {
     const indexTo = circuits.indexOf(to);
     if (indexTo === indexFrom) {
         // Do nothing
-        console.log("Same index");
         continue;
     }
     const toVectors = circuits.splice(indexTo, 1)[0];
     const fromVectors = circuits.splice(circuits.indexOf(from), 1)[0];
     circuits.push([...toVectors, ...fromVectors]);
     circuits.sort((a, b) => b.length - a.length);
-    // console.log(`Circuits after step ${i}:`, circuits);
-    // console.log("Circuits length", circuits.length);
+
+    if (circuits.length === 1) {
+        // console.log(shortestEdge);
+        circuitSum = vectors[0].x * vectors[1].x;
+    }
+    
 }
 
-// console.log(shortestEdges);
-// console.log(input[0].diff(input[1]))
-console.log(circuits.slice(0, 3).map((v) => v.length).reduce((acc, v) => acc *= v));
+// Part A.
+// console.log(circuits.slice(0, 3));
+// console.log(circuits.slice(0, 3).map((v) => v.length).reduce((acc, v) => acc *= v));
+console.log(circuitSum);
