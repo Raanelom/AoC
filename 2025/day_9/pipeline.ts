@@ -44,8 +44,8 @@ for (let i = 0; i < coordinates.length; i++) {
     }
 }
 
-const longestAreas = [...areas]
+const sortedAreas = [...areas]
     .sort((a, b) => b.area - a.area);
 
-console.log(longestAreas[0]);
+console.log(sortedAreas[0]);
 // Largest area: 4776100539
