@@ -2,24 +2,31 @@ import { readFileSync } from 'fs';
 
 const LIGHT_ON = "#";
 
-const press = async (remaining: number[][], endState: boolean[]): Promise<number> => {
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const press = async (buttons: number[][], endState: number[]): Promise<number> => {
     // TODO: implement queue instead of recursion which gives me headache
     // console.log("Buttons to press", remaining.length);
     const queue: {
-        state: boolean[];
+        state: number[];
         pressed: number[][];
-        remaining: number[][];
+        index: number
     }[] = [];
 
-    const emptyState: boolean[] = new Array<boolean>(endState.length).fill(false);
+    const emptyState = new Array<number>(endState.length).fill(0);
 
     queue.push({
         state: emptyState,
         pressed: [],
-        remaining
+        index: 0
     })
 
     const knownStates: Set<string> = new Set();
+    // TODO: build a recursive solution for this problem => depth-first in this case
+
+    buttons.sort((a, b) => b.reduce((acc, current) => acc + current) - a.reduce((acc, current) => acc + current));
 
     while (queue.length) {
         const current = queue.shift();
@@ -33,62 +40,90 @@ const press = async (remaining: number[][], endState: boolean[]): Promise<number
             return current.pressed.length;
         }
 
-        if (!current.remaining.length) {
-            // We can continue, this state is not worth investigating
-            continue;
-        }
-
-        if (knownStates.has(JSON.stringify(current.pressed))) {
+        if (knownStates.has(JSON.stringify(current))) {
             // We already processed this state, continue
             continue;
         }
 
-        knownStates.add(JSON.stringify(current.pressed))
-
-        for (let i = 0; i < current.remaining.length; i++) {
-            const next = structuredClone(current);
-            const buttonToPress = next.remaining.splice(i, 1)[0];
-            // console.log("Button to press", buttonToPress);
-            next.pressed.push(buttonToPress);
-            for (const b of buttonToPress) {
-                next.state[b] = !next.state[b];
-            }
-            next.pressed.sort();
-            queue.push(next);
+        if (current.index === buttons.length) {
+            continue;
         }
+
+        // If any of the numbers exceeded the endstate, stop
+        const exceeded = (state: number[]) => !!state.find((item, index) => item > endState[index]);
+        if (exceeded(current.state)) {
+            knownStates.add(JSON.stringify(current));
+            
+            const next = structuredClone(current);
+            next.index++;
+            const buttonToRemove = next.pressed.pop()!;
+            for (const b of buttonToRemove) {
+                next.state[b] -= 1;
+            }
+            queue.push(next);
+            continue;
+        }
+        // console.log(current);
+
+        
+
+        knownStates.add(JSON.stringify(current.pressed));
+
+        // for (let i = 0; i < buttons.length; i++) {
+        const next = structuredClone(current);
+        const buttonToPress = buttons[current.index];
+        // console.log(buttonToPress);
+        // console.log("Button to press", buttonToPress);
+        next.pressed.sort();
+        next.pressed.push(buttonToPress);
+        for (const b of buttonToPress) {
+            next.state[b] = next.state[b] + 1;
+        }
+        next.pressed;
+        queue.push(next);
+                console.log(next);
+            await sleep(1000);
+        // }
     }
     return Infinity;
 }
 
 const input: {
-    endState: boolean[];
+    lightState: boolean[];
     buttons: number[][];
-}[] = readFileSync('./input', 'utf-8')
+    joltageState: number[];
+}[] = readFileSync('./example_input', 'utf-8')
     .trim()
     .split('\n')
     .map((line: string) => {
         const lineItems = line.split(" ");
-        const endState = lineItems[0]
+        const lightState = lineItems[0]
             .slice(1, -1)
             .split("")
             .map((l) => l === LIGHT_ON);
         const buttons = lineItems
             .slice(1, -1)
             .map((b) => b.slice(1, -1).split(",").map((no) => parseInt(no)));
-        return { endState, buttons }
+        const joltageState = lineItems
+            .slice(-1)[0]
+            .slice(1,-1)
+            .split(",").map((no) => parseInt(no));
+        return { lightState, buttons, joltageState }
     });
 
 (async function() {
+    
     let lineNo = 0;
     const presses: number[] = [];
     for (const line of input) {
+        const { lightState, buttons, joltageState } = line;
         console.log("\n");
         console.log("Start processing line", lineNo);
-        const leastPresses = await press(line.buttons, line.endState);
+        const leastPresses = await press(buttons, joltageState);
         presses.push(leastPresses);
         console.log("Least presses", leastPresses);
         lineNo++;
     }
-    console.log(presses.reduce((prev, current) => prev += current));
+    console.log("\nPresses count:", presses.reduce((prev, current) => prev += current));
 }());
 
