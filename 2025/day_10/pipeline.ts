@@ -19,6 +19,8 @@ const press = async (remaining: number[][], endState: boolean[]): Promise<number
         remaining
     })
 
+    const knownStates: Set<string> = new Set();
+
     while (queue.length) {
         const current = queue.shift();
 
@@ -36,6 +38,13 @@ const press = async (remaining: number[][], endState: boolean[]): Promise<number
             continue;
         }
 
+        if (knownStates.has(JSON.stringify(current.pressed))) {
+            // We already processed this state, continue
+            continue;
+        }
+
+        knownStates.add(JSON.stringify(current.pressed))
+
         for (let i = 0; i < current.remaining.length; i++) {
             const next = structuredClone(current);
             const buttonToPress = next.remaining.splice(i, 1)[0];
@@ -48,13 +57,13 @@ const press = async (remaining: number[][], endState: boolean[]): Promise<number
             queue.push(next);
         }
     }
-    return Infinity;    
+    return Infinity;
 }
 
 const input: {
     endState: boolean[];
     buttons: number[][];
-}[] = readFileSync('./example_input', 'utf-8')
+}[] = readFileSync('./input', 'utf-8')
     .trim()
     .split('\n')
     .map((line: string) => {
@@ -71,14 +80,15 @@ const input: {
 
 (async function() {
     let lineNo = 0;
+    const presses: number[] = [];
     for (const line of input) {
-        
         console.log("\n");
-        console.log("Start processing line", lineNo, line.endState);
-        const statesTable = new Map<string, number>();
+        console.log("Start processing line", lineNo);
         const leastPresses = await press(line.buttons, line.endState);
+        presses.push(leastPresses);
         console.log("Least presses", leastPresses);
         lineNo++;
     }
+    console.log(presses.reduce((prev, current) => prev += current));
 }());
 
