@@ -2,37 +2,53 @@ import { readFileSync } from 'fs';
 
 const LIGHT_ON = "#";
 
-const press = async (state: boolean[], endState: boolean[], buttons: number[][], buttonsPressed: number[][]): Promise<number> => {
+const press = async (remaining: number[][], endState: boolean[]): Promise<number> => {
     // TODO: implement queue instead of recursion which gives me headache
-    // console.log("Buttons to press", buttons.length);
-    const presses: Promise<number>[] = [];
-    for (let i = 0; i < buttons.length; i++) {
-        const newState = [...state];
-        const newButtons: number[][] = JSON.parse(JSON.stringify(buttons));
-        const buttonToPress = newButtons.splice(i, 1)[0];
-        for (const b of buttonToPress) {
-            newState[b] =! newState[b];
-        }
-        const newButtonsPressed: number[][] = JSON.parse(JSON.stringify(buttonsPressed));
-        newButtonsPressed.push(buttonToPress);
-        newButtonsPressed.sort();
+    // console.log("Buttons to press", remaining.length);
+    const queue: {
+        state: boolean[];
+        pressed: number[][];
+        remaining: number[][];
+    }[] = [];
 
-        const stateKey = JSON.stringify(newButtonsPressed);
-        if (JSON.stringify(newState) === JSON.stringify(endState)) {
-            // console.log("Correct state", newButtonsPressed);
-            return newButtonsPressed.length;
+    const emptyState: boolean[] = new Array<boolean>(endState.length).fill(false);
+
+    queue.push({
+        state: emptyState,
+        pressed: [],
+        remaining
+    })
+
+    while (queue.length) {
+        const current = queue.shift();
+
+        if (!current) {
+            throw new Error("Queue has length, but is also empty?");
         }
-        else if (newButtons.length === 0) {
-            // console.log("Infinity", newButtons);
-            presses.push(Promise.resolve(Infinity));
-        } else {
-            // TODO: calculate presses here first. Then search for new states
-            presses.push(press(newState, endState, newButtons, newButtonsPressed));
+
+        if (JSON.stringify(current.state) === JSON.stringify(endState)) {
+            // This is the first viable solution
+            return current.pressed.length;
         }
-        
+
+        if (!current.remaining.length) {
+            // We can continue, this state is not worth investigating
+            continue;
+        }
+
+        for (let i = 0; i < current.remaining.length; i++) {
+            const next = structuredClone(current);
+            const buttonToPress = next.remaining.splice(i, 1)[0];
+            // console.log("Button to press", buttonToPress);
+            next.pressed.push(buttonToPress);
+            for (const b of buttonToPress) {
+                next.state[b] = !next.state[b];
+            }
+            next.pressed.sort();
+            queue.push(next);
+        }
     }
-    return Math.min(...(await Promise.all(presses))); // Returns infinity for empty lists
-    
+    return Infinity;    
 }
 
 const input: {
@@ -56,11 +72,11 @@ const input: {
 (async function() {
     let lineNo = 0;
     for (const line of input) {
-        const lightState: boolean[] = new Array<boolean>(line.endState.length).fill(false);
+        
         console.log("\n");
         console.log("Start processing line", lineNo, line.endState);
         const statesTable = new Map<string, number>();
-        const leastPresses = await press(lightState, line.endState, line.buttons, [], statesTable);
+        const leastPresses = await press(line.buttons, line.endState);
         console.log("Least presses", leastPresses);
         lineNo++;
     }
