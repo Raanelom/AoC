@@ -2,9 +2,9 @@ import { readFileSync } from 'fs';
 
 const LIGHT_ON = "#";
 
-const press = async (state: boolean[], endState: boolean[], buttons: number[][], buttonsPressed: number[][], table: Map<string, number>): Promise<number> => {
+const press = async (state: boolean[], endState: boolean[], buttons: number[][], buttonsPressed: number[][]): Promise<number> => {
     // TODO: implement queue instead of recursion which gives me headache
-    console.log("Buttons to press", buttons.length);
+    // console.log("Buttons to press", buttons.length);
     const presses: Promise<number>[] = [];
     for (let i = 0; i < buttons.length; i++) {
         const newState = [...state];
@@ -18,23 +18,16 @@ const press = async (state: boolean[], endState: boolean[], buttons: number[][],
         newButtonsPressed.sort();
 
         const stateKey = JSON.stringify(newButtonsPressed);
-        const existingState = table.get(stateKey)
-        if(existingState) {
-            presses.push(Promise.resolve(existingState));
-            // console.log("Added existing state", existingState);
-        }
-        else if (JSON.stringify(newState) === JSON.stringify(endState)) {
-            console.log("Correct state", newButtonsPressed);
-            table.set(stateKey, newButtonsPressed.length);
+        if (JSON.stringify(newState) === JSON.stringify(endState)) {
+            // console.log("Correct state", newButtonsPressed);
             return newButtonsPressed.length;
         }
         else if (newButtons.length === 0) {
             // console.log("Infinity", newButtons);
-            table.set(stateKey, Infinity);
             presses.push(Promise.resolve(Infinity));
         } else {
             // TODO: calculate presses here first. Then search for new states
-            presses.push(press(newState, endState, newButtons, newButtonsPressed, table));
+            presses.push(press(newState, endState, newButtons, newButtonsPressed));
         }
         
     }
