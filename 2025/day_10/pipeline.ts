@@ -7,91 +7,93 @@ function sleep(ms: number) {
 }
 
 // (0,5) (1,2,3,4,5) (1,3,4,5) (3,4) (2,3,5) (0,1,2,5) [29,40,23,42,39,52]
-// TODO: sort buttons based on adding the most balance in the result set
-const sortButtons = (buttons: number[][], joltageState: number[]) => {
-    const joltageTotal = joltageState.reduce((acc, current) => acc + current, 0);
-    const joltageWeights = joltageState.map((value) => value / joltageTotal);
-    console.log(joltageState);
-    console.log(JSON.stringify(joltageWeights));
-    // const buttonsWeights = buttons.map((btn) => {
-    //     let uniqueness = buttons.length;
-    //     for (const b of btn) {
-    //         uniqueness = Math.min(uniqueness, buttons.filter((button) => button !== btn && button.includes(b)).length || 1);
-    //     }
-    //     // The lower the number, the more unique
-    //     return 1 / uniqueness;
-    // });
-    // console.log(buttons);
-    // console.log(buttonsWeights);
-    // throw new Error("Stop");
 
-    // console.log("Weights", joltageWeights);
-    // const joltageOrder = joltageState.map((value, index) => ({ value, index })).sort((a, b) => b.value - a.value);
-    return buttons.sort((a, b) => {
-        // const uniqueA = buttonsWeights[buttons.indexOf(a)];
-        // const uniqueB = buttonsWeights[buttons.indexOf(b)];
-        const weightA = a.reduce((acc, current) => acc + joltageWeights[current], 0);
-        const weightB = b.reduce((acc, current) => acc + joltageWeights[current], 0);
-        // console.log("\nSorting", a, b);
-        // console.log("Weights", weightA, weightB);
-        return weightB - weightA || b.length - a.length;
-    });
+//  a * (0, 1, 1, 1, 1, 1)
+//  b * (0, 1, 0, 1, 1, 1)
+//  c * (0, 0, 0, 1, 1, 0)
+//  d * (0, 0, 1, 1, 0, 1)
+//  e * (1, 1, 1, 0, 0, 1)
+//  = [ 29,40,23,42,39,52 ]
+
+const pressButton = (button: number[], state: number[]) => {
+    for (const b of button) {
+        state[b]++;
+    }
 }
 
-const stateDiff = (currentState: number[], endState: number[]) => {
-    const diffState = structuredClone(endState);
-    for (let i = 0; i < currentState.length; i++) {
-        diffState[i] -= currentState[i];
+const selectBestButton = (buttons: number[][], state: number[], endState: number[]) => {
+    // console.log("\nStart selecting a button for state", state);
+
+    const positionCoverage = new Array(endState.length).fill(0);
+    for (const button of buttons) {
+        for (const pos of button) {
+            positionCoverage[pos]++;
+        }
     }
-    return diffState;
+
+     const bestButton = buttons.map((button) => {
+        const simulateState = [...state];
+        for (const pos of button) {
+            simulateState[pos]++;
+        }
+
+        const overshooting = simulateState.some((val, i) => val > endState[i]);
+
+        if (overshooting) return { button, score: Infinity };
+
+        const score = simulateState.reduce((sum, val, i) => {
+            const diff = endState[i] - val;
+            return sum + Math.pow(diff, 2);
+        }, 0);
+
+        // Tiebreaker 4: Uniqueness - prioritize buttons that affect rare positions
+        // Lower coverage = more unique = higher priority
+        // Only count positions that still need work
+        const uniqueness = button
+            .filter(pos => state[pos] < endState[pos])
+            .reduce((sum, pos) => sum + (1 / positionCoverage[pos]), 0);
+
+        console.log("Score", score, "uniqueness", uniqueness.toFixed(2), button, simulateState);
+
+        // console.log("Score", score, "Uniqueness", uniqueness, "button", button, simulateState);
+
+        return { button, score, uniqueness };
+    })
+    .filter((btn) => btn.score < Infinity)
+    .sort((a, b) => a.score - b.score || b.uniqueness! - a.uniqueness!);
+    // console.log("best button", bestButton[0]);
+    return bestButton[0];
+    // console.log("Endstate - startState, diff", endState, state, stateDiff);
 }
 
 const press = async (
     buttons: number[][], 
     endState: number[], 
-    state: number[] = new Array<number>(endState.length).fill(0), 
-    pressed: number[][] = [],
-    knownStates: Set<string> = new Set()
 ): Promise<number> => {
-    // console.log("Pressed", JSON.stringify(pressed));
-    // console.log("State", JSON.stringify(state));
-    // console.log("\n");
-    // await sleep(100);
-    if (JSON.stringify(state) === JSON.stringify(endState)) {
-        // This is the first viable solution
-        return pressed.length;
-    }
-    if (knownStates.has(JSON.stringify(pressed))) {
-        // console.log("KNOWN STATE");
-        return Infinity;
+    // TODO:
+    // - Stay in a while-loop until the endState is equal to the current state
+    // 
+    const currentState = new Array<number>(endState.length).fill(0);
+    const pressed: number[][] = [];
+
+    while (JSON.stringify(currentState) !== JSON.stringify(endState)) {
+        // console.log("Current", currentState);
+        // console.log("Pressed", pressed);
+        // await sleep(100);
+        const bestButton = selectBestButton(buttons, currentState, endState);
+        if (!bestButton) {
+            console.error("Stuck at state", JSON.stringify(currentState), "and Pressed", JSON.stringify(pressed));
+            return -1;
+        }
+        pressed.push(bestButton.button);
+        for (const pos of bestButton.button) {
+            currentState[pos]++;
+        }
+        // TODO: select the BEST button to add that achieves the best balance (least difference)
+        // break;
     }
 
-    const selectedButtons = buttons.filter((btn) => {
-        let isValidButton = true;
-        for (const b of btn) {
-            isValidButton = isValidButton && (endState[b] - state[b] > 0)
-        }
-        return isValidButton;
-    })
-    sortButtons(selectedButtons, stateDiff(state, endState));
-    // console.log(selectedButtons);
-    for (let i = 0; i < selectedButtons.length; i++) {
-        const nextState = structuredClone(state);
-        const newPressed = structuredClone(pressed);
-        const buttonToPress = selectedButtons[i];
-        newPressed.push(buttonToPress);
-        newPressed.sort();
-        for (const b of buttonToPress) {
-            nextState[b] = nextState[b] + 1;
-        }
-        
-        const res = await press(selectedButtons, endState, nextState, newPressed, knownStates);
-        if (res < Infinity) {
-            return res;
-        }
-        knownStates.add(JSON.stringify(newPressed));
-    }
-    return Infinity
+    return pressed.length;
 }
 
 const input: {
@@ -115,7 +117,7 @@ const input: {
             .slice(1,-1)
             .split(",").map((no) => parseInt(no));
         return { lightState, buttons, joltageState }
-    });
+    }).slice(0, 1);
 
 (async function() {
     
@@ -125,11 +127,8 @@ const input: {
         const { lightState, buttons, joltageState } = line;
         console.log("\n");
         console.log("Start processing line", lineNo);
-        
-        // sortButtons(buttons, joltageState);
-        // console.log(joltageState);
-        // console.log(buttons);
-        const leastPresses = await press(buttons, joltageState);
+        const leastPresses = await pressDFS(buttons, joltageState);
+        // const leastPresses = pressDPOptimized(buttons, joltageState);
         presses.push(leastPresses);
         console.log("Least presses", leastPresses);
         lineNo++;
