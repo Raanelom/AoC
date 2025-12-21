@@ -68,6 +68,7 @@ const getNextButtons = async (remaining: number[][], endState: boolean[]): Promi
         remaining
     });
 
+    // TODO: build some proper caching mechanism
     const knownStates: Set<string> = new Set();
     const solutions = new Set<string>();
 
