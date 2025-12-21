@@ -26,19 +26,30 @@ const press = async (
         return 0;
     }
     
-    const oddPositions = state
-        .map((val, index) => ({ index, isOdd: val % 2 === 1 }))
-        .filter((val) => val.isOdd)
-        .map((val) => val.index);
+    const oddPositions = state.map((val) => val % 2 === 1);
 
-    console.log("State", state);
+    if (!oddPositions.some(Boolean)) {
+        console.log("We're all even");
+    }
+
+    console.log("\nState", state);
     console.log("Odd positions", oddPositions);
-    
-    return 0;
-    // Solve matrix, dive into study material
+    const nextButtons = await getNextButtons(buttons, oddPositions);
+
+    // console.log("Press buttons", nextButtons);
+    for (const button of nextButtons) {
+        for (const b of button) {
+            state[b]--;
+        }
+    }
+    const newState = state.map((s) => s / 2);
+    console.log("New state", newState);
+    console.log("Next buttons", nextButtons);
+
+    return 2 * (await press(buttons, newState)) + nextButtons.length;
 };
 
-const pressBoolean = async (remaining: number[][], endState: boolean[]): Promise<number> => {
+const getNextButtons = async (remaining: number[][], endState: boolean[]): Promise<number[][]> => {
     // console.log("Buttons to press", remaining.length);
     const queue: {
         state: boolean[];
@@ -62,9 +73,9 @@ const pressBoolean = async (remaining: number[][], endState: boolean[]): Promise
             throw new Error("Queue has length, but is also empty?");
         }
 
-        if (JSON.stringify(current.state) === JSON.stringify(endState)) {
+        if (JSON.stringify(current.state) === JSON.stringify(endState) && current.pressed.length) {
             // This is the first viable solution
-            return current.pressed.length;
+            return current.pressed;
         }
 
         if (!current.remaining.length) {
@@ -93,8 +104,7 @@ const pressBoolean = async (remaining: number[][], endState: boolean[]): Promise
             queue.push(next);
         }
     }
-
-    return Infinity;
+    throw new Error("Unexpected: no solution found");
 }
 
 const input: {
@@ -118,7 +128,7 @@ const input: {
             .slice(1,-1)
             .split(",").map((no) => parseInt(no));
         return { lightState, buttons, joltageState }
-    }).slice(0, 1);
+    }).slice(3);
 
 (async function() {
     
@@ -129,7 +139,6 @@ const input: {
         console.log("\n");
         console.log("Start processing line", lineNo);
         const leastPresses = await press(buttons, joltageState);
-        // const leastPresses = pressDPOptimized(buttons, joltageState);
         presses.push(leastPresses);
         console.log("Least presses", leastPresses);
         lineNo++;
