@@ -6,8 +6,6 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// (0,5) (1,2,3,4,5) (1,3,4,5) (3,4) (2,3,5) (0,1,2,5) [29,40,23,42,39,52]
-
 //  a * (0, 1, 1, 1, 1, 1)
 //  b * (0, 1, 0, 1, 1, 1)
 //  c * (0, 0, 0, 1, 1, 0)
@@ -18,7 +16,7 @@ function sleep(ms: number) {
 
 const press = async (
     buttons: number[][],
-    state: number[] = []
+    state: number[] = [],
 ): Promise<number> => {
     // Let's implement this algorithm: https://old.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
     if (state.every((num) => num === 0)) {
@@ -28,28 +26,33 @@ const press = async (
     
     const oddPositions = state.map((val) => val % 2 === 1);
 
-    if (!oddPositions.some(Boolean)) {
-        console.log("We're all even");
-    }
+    // console.log("\nState", state);
+    // console.log("Odd positions", oddPositions);
+    let solution = Infinity;
+    const nextButtonSets = await getNextButtons(buttons, oddPositions);
 
-    console.log("\nState", state);
-    console.log("Odd positions", oddPositions);
-    const nextButtons = await getNextButtons(buttons, oddPositions);
-
-    // console.log("Press buttons", nextButtons);
-    for (const button of nextButtons) {
-        for (const b of button) {
-            state[b]--;
+    for (const nextButtons of nextButtonSets) {
+        const newState = [...state];
+        // console.log("Press buttons", nextButtons);
+        for (const button of nextButtons) {
+            for (const b of button) {
+                newState[b]--;
+            }
         }
-    }
-    const newState = state.map((s) => s / 2);
-    console.log("New state", newState);
-    console.log("Next buttons", nextButtons);
+        newState.forEach((s, index) => newState[index] = s / 2);
+        if (newState.some((val) => val < 0)) {
+            // This state is invalid
+            continue;
+        }
+        // console.log("New state", newState);
+        // console.log("Next buttons", nextButtons);
 
-    return 2 * (await press(buttons, newState)) + nextButtons.length;
+        solution = Math.min(solution, 2 * (await press(buttons, newState)) + nextButtons.length);
+    }
+    return solution;
 };
 
-const getNextButtons = async (remaining: number[][], endState: boolean[]): Promise<number[][]> => {
+const getNextButtons = async (remaining: number[][], endState: boolean[]): Promise<number[][][]> => {
     // console.log("Buttons to press", remaining.length);
     const queue: {
         state: boolean[];
@@ -66,6 +69,7 @@ const getNextButtons = async (remaining: number[][], endState: boolean[]): Promi
     });
 
     const knownStates: Set<string> = new Set();
+    const solutions = new Set<string>();
 
     while (queue.length) {
         const current = queue.shift();
@@ -73,9 +77,10 @@ const getNextButtons = async (remaining: number[][], endState: boolean[]): Promi
             throw new Error("Queue has length, but is also empty?");
         }
 
-        if (JSON.stringify(current.state) === JSON.stringify(endState) && current.pressed.length) {
+        if (JSON.stringify(current.state) === JSON.stringify(endState)) {
             // This is the first viable solution
-            return current.pressed;
+            solutions.add(JSON.stringify(current.pressed));
+            // console.log("Done immediately. Continue nonetheless");
         }
 
         if (!current.remaining.length) {
@@ -104,14 +109,15 @@ const getNextButtons = async (remaining: number[][], endState: boolean[]): Promi
             queue.push(next);
         }
     }
-    throw new Error("Unexpected: no solution found");
+    // console.log(solutions);
+    return [...solutions].map((solution) => JSON.parse(solution));
 }
 
 const input: {
     lightState: boolean[];
     buttons: number[][];
     joltageState: number[];
-}[] = readFileSync('./example_input', 'utf-8')
+}[] = readFileSync('./input', 'utf-8')
     .trim()
     .split('\n')
     .map((line: string) => {
@@ -128,7 +134,7 @@ const input: {
             .slice(1,-1)
             .split(",").map((no) => parseInt(no));
         return { lightState, buttons, joltageState }
-    }).slice(3);
+    }).slice(0, 2);
 
 (async function() {
     
