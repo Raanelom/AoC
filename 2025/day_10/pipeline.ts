@@ -17,101 +17,85 @@ function sleep(ms: number) {
 const press = async (
     buttons: number[][],
     state: number[] = [],
+    knownPresses: Map<string, number> = new Map()
 ): Promise<number> => {
     // Let's implement this algorithm: https://old.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
     if (state.every((num) => num === 0)) {
         // State is empty? We're done
         return 0;
     }
+
+    const stateKey = JSON.stringify(state);
+
+    if (knownPresses.has(stateKey)) {
+        return knownPresses.get(stateKey)!;
+    }
     
     const oddPositions = state.map((val) => val % 2 === 1);
 
-    // console.log("\nState", state);
-    // console.log("Odd positions", oddPositions);
     let solution = Infinity;
-    const nextButtonSets = await getNextButtons(buttons, oddPositions);
+    const nextButtonSets = getNextButtons(buttons, oddPositions);
 
     for (const nextButtons of nextButtonSets) {
         const newState = [...state];
-        // console.log("Press buttons", nextButtons);
+        
         for (const button of nextButtons) {
             for (const b of button) {
                 newState[b]--;
             }
         }
         newState.forEach((s, index) => newState[index] = s / 2);
+
         if (newState.some((val) => val < 0)) {
             // This state is invalid
             continue;
         }
-        // console.log("New state", newState);
-        // console.log("Next buttons", nextButtons);
 
-        solution = Math.min(solution, 2 * (await press(buttons, newState)) + nextButtons.length);
+        const newStateKey = JSON.stringify(newState);
+        const nextPress = knownPresses.get(newStateKey) ?? await press(buttons, newState, knownPresses);
+        
+        knownPresses.set(newStateKey, nextPress);
+        solution = Math.min(solution, 2 * (nextPress) + nextButtons.length);
     }
+    knownPresses.set(stateKey, solution);
     return solution;
 };
 
-const getNextButtons = async (remaining: number[][], endState: boolean[]): Promise<number[][][]> => {
-    // console.log("Buttons to press", remaining.length);
-    const queue: {
-        state: boolean[];
-        pressed: number[][];
-        remaining: number[][];
-    }[] = [];
+const buttonCache = new Map<string, number[][][]>();
 
-    const emptyState: boolean[] = new Array<boolean>(endState.length).fill(false);
+const getNextButtons = (
+    buttons: number[][], 
+    endState: boolean[]
+): number[][][] => {
+    const cacheKey = JSON.stringify({ buttons, endState });
+    
+    if (buttonCache.has(cacheKey)) {
+        return buttonCache.get(cacheKey)!;
+    }
 
-    queue.push({
-        state: emptyState,
-        pressed: [],
-        remaining
-    });
-
-    // TODO: build some proper caching mechanism
-    const knownStates: Set<string> = new Set();
-    const solutions = new Set<string>();
-
-    while (queue.length) {
-        const current = queue.shift();
-        if (!current) {
-            throw new Error("Queue has length, but is also empty?");
-        }
-
-        if (JSON.stringify(current.state) === JSON.stringify(endState)) {
-            // This is the first viable solution
-            solutions.add(JSON.stringify(current.pressed));
-            // console.log("Done immediately. Continue nonetheless");
-        }
-
-        if (!current.remaining.length) {
-            // We can continue, this state is not worth investigating
-            continue;
-        }
-
-        if (knownStates.has(JSON.stringify(current.pressed))) {
-            // We already processed this state, continue
-            continue;
-        }
-
-        knownStates.add(JSON.stringify(current.pressed))
-
-        for (let i = 0; i < current.remaining.length; i++) {
-            const next = structuredClone(current);
-            const buttonToPress = next.remaining.splice(i, 1)[0];
-
-            next.pressed.push(buttonToPress);
-
-            for (const b of buttonToPress) {
-                next.state[b] = !next.state[b];
+    const solutions: number[][][] = [];
+    
+    const totalCombinations = Math.pow(2, buttons.length);
+        
+    for (let mask = 0; mask < totalCombinations; mask++) {
+        const state = new Array<boolean>(endState.length).fill(false);
+        const pressed: number[][] = [];
+        
+        for (let i = 0; i < buttons.length; i++) {
+            if (mask & (1 << i)) {
+                pressed.push(buttons[i]);
+                for (const pos of buttons[i]) {
+                    state[pos] = !state[pos];
+                }
             }
-
-            next.pressed.sort();
-            queue.push(next);
+        }
+        if (JSON.stringify(state) === JSON.stringify(endState)) {
+            solutions.push(pressed);
         }
     }
-    // console.log(solutions);
-    return [...solutions].map((solution) => JSON.parse(solution));
+
+    buttonCache.set(cacheKey, solutions);
+    return solutions;
 }
 
 const input: {
@@ -135,7 +119,7 @@ const input: {
             .slice(1,-1)
             .split(",").map((no) => parseInt(no));
         return { lightState, buttons, joltageState }
-    }).slice(0, 2);
+    });
 
 (async function() {
     
