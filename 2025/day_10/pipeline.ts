@@ -19,7 +19,7 @@ const press = async (
     state: number[] = [],
     knownPresses: Map<string, number> = new Map()
 ): Promise<number> => {
-    // Let's implement this algorithm: https://old.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/
+    // Thanks to https://old.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/ <3
     if (state.every((num) => num === 0)) {
         // State is empty? We're done
         return 0;
@@ -135,5 +135,6 @@ const input: {
         lineNo++;
     }
     console.log("\nPresses count:", presses.reduce((prev, current) => prev += current));
+    // 19293
 }());
 

@@ -30,7 +30,7 @@ class Area {
     }
 }
 
-const coordinates: Coordinate[] = readFileSync('./input', 'utf-8').trim().split('\n')
+const coordinates: Coordinate[] = readFileSync('./example_input', 'utf-8').trim().split('\n')
     .map((point: string) => {
         const coordinates = point.split(",");
         return new Coordinate(parseInt(coordinates[0]), parseInt(coordinates[1]))
