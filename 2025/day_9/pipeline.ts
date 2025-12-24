@@ -90,82 +90,65 @@ for (let i = 0; i < coordinates.length; i++) {
     for(let j = (i + 1); j < coordinates.length; j++) {
         const cornerOne = coordinates[i];
         const cornerTwo = coordinates[j];
-        const otherCorners = [
-            new Coordinate(cornerOne.x, cornerTwo.y),
-            new Coordinate(cornerTwo.x, cornerOne.y)
-        ];
-        // let isValid = true;
-        // for (const corner of otherCorners) {
-        //     const verticalBefore = closestBefore(verticalLines, corner.x);
-        //     const verticalAfter = closestAfter(verticalLines, corner.x);
-        //     // const isEvenX = verticalLines.indexOf(verticalBefore) - startX % 2 === 0;
-        //     // TODO: determine if the line before and after are odd/even compared to start point to determine if it's between two valid lines
-        //     console.log("Vertical before", corner.x, verticalBefore);
-        //     console.log("Vertical after", corner.x, verticalAfter);
-        // }
         areas.push(new Area(cornerOne, cornerTwo));
-        // console.log(areas);
-        // console.log("\nNew corners:", cornerOne, cornerTwo, cornerThree, cornerFour);
     }
 }
 
 const verticalLines = areas.filter((a) => a.isVerticalLine());
 const horizontalLines = areas.filter((a) => a.isHorizontalLine());
 
-const baseVertical = coordinates[0].x;
-const baseHorizontal = coordinates[0].y;
-
-// console.log(verticalLines);
-
-let validAreas: Area[] = [];
+const validAreas: Area[] = [];
+const knownCorners = new Map();
 
 for (const area of areas) {
     const corners = area.getCorners();
-    console.log("\nProcess area", area.a, area.b);
+    let validCorners = true;
     for (const corner of corners) {
+        const cornerKey = JSON.stringify(corner);
+        if (knownCorners.has(cornerKey)) {
+            validCorners = knownCorners.get(cornerKey)!;
+            continue;
+        }
         const verticalAxes = verticalLines
             .filter((a) => a.isInVerticalRange(corner))
-            .map((area) => area.a.x);
+            .map((area) => area.a.x)
+            .sort((a, b) => b - a);
         const horizontalAxes = horizontalLines
             .filter((a) => a.isInHorizontalRange(corner))
-            .map((area) => area.a.y);
-        
-        const verticalAxesSelect = baseVertical >= corner.x ? verticalAxes
-            .filter((val) => val <= baseVertical)
-            .sort((a, b) => b - a) 
-            : verticalAxes
-                .filter((val) => val >= baseVertical)
-                .sort((a, b) => a - b);
-        // console.log("Vertical axes select:", corner, verticalAxesSelect);
-        const horizontalAxesSelect = baseHorizontal >= corner.y ? horizontalAxes
-            .filter((val) => val <= baseHorizontal) 
-            .sort((a, b) => b - a)
-            : horizontalAxes
-                .filter((val) => val >= baseHorizontal)
-                .sort((a, b) => a - b);
-        // console.log("Horizontal axes select:", corner, horizontalAxesSelect);
-        // const hlineIndex = horizontalAxesSelect.indexOf(horizontalAxesSelect.find((val, index) => val <= corner.y && val > horizontalAxesSelect[index + 1]) || Infinity);
-        // const vlineIndex = verticalAxesSelect.indexOf(verticalAxesSelect.find((val, index) => val <= corner.x && val > horizontalAxesSelect[index + 1]) || Infinity);
-        const hlines = horizontalAxesSelect.find((val, index) => val <= corner.y && val > horizontalAxesSelect[index + 1]);
-        const vlines = verticalAxesSelect.find((val, index) => val <= corner.x && val > horizontalAxesSelect[index + 1]);
-        console.log("looking for vline for corner", corner, "in axes", verticalAxesSelect);
-        console.log("vlines", vlines, "hlines", hlines);
-        // if (hlineIndex > -1 && vlineIndex > -1) {
-        // const validCorner = hlineIndex % 2 === 1 && vlineIndex % 2 === 1;
-        // if (validCorner) {
-        //     console.log("Got valid corner", corner);
-        // }
-        // }
+            .map((area) => area.a.y)
+            .sort((a, b) => b - a);
+
+        const alwaysValid = horizontalAxes.includes(corner.y) || verticalAxes.includes(corner.x);
+        const validHline = alwaysValid 
+            || !!horizontalAxes.find((val, index) => val < corner.y && corner.y > (horizontalAxes?.[index + 1] || -1) && index % 2 === 1);
+        const validVline = alwaysValid
+            || !!verticalAxes.find((val, index) => val < corner.x && corner.x > (verticalAxes?.[index + 1] || -1) && index % 2 === 1);
+        // console.log("looking for vline for corner", corner, "in axes", verticalAxesSelect, verticalAxesSelect.find((val) => val < corner.x));
+        // console.log("\nvalid vline", corner,  validVline);
+        // console.log("valid hline", corner, validHline);
+        knownCorners.set(cornerKey, validVline && validHline);
+        if (validVline && validHline) {
+            knownCorners.set(cornerKey, true);
+            // console.log("Valid corner", corner);
+        }
+        else {
+            console.log("Invalid corner", corner, "vline", validVline, "hline", validHline);
+            console.log(verticalAxes);
+            console.log(verticalAxes.find((val, index) => val < corner.y && corner.x > (verticalAxes?.[index + 1] || -1)));
+            validCorners = false;
+            knownCorners.set(cornerKey, validCorners);
+            break;
+        }
     }
-    // Let's check if:
-    // The area's corner are between two horizontal lines and two vertical lines
-    // And whether
+    if (validCorners) {
+        validAreas.push(area);
+    }
 }
 
-// const sortedAreas = [...areas]
-//     .sort((a, b) => b.area - a.area);
+const sortedAreas = validAreas
+    .sort((a, b) => b.area - a.area);
 
 // console.log(sortedAreas);
 
-// console.log(sortedAreas[0]);
+console.log(sortedAreas[0]);
 // Largest area: 4776100539
