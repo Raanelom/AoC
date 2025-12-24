@@ -132,9 +132,9 @@ for (const area of areas) {
             // console.log("Valid corner", corner);
         }
         else {
-            console.log("Invalid corner", corner, "vline", validVline, "hline", validHline);
-            console.log(verticalAxes);
-            console.log(verticalAxes.find((val, index) => val < corner.y && corner.x > (verticalAxes?.[index + 1] || -1)));
+            // console.log("Invalid corner", corner, "vline", validVline, "hline", validHline);
+            // console.log(verticalAxes);
+            // console.log(verticalAxes.find((val, index) => val < corner.y && corner.x > (verticalAxes?.[index + 1] || -1)));
             validCorners = false;
             knownCorners.set(cornerKey, validCorners);
             break;
@@ -152,3 +152,4 @@ const sortedAreas = validAreas
 
 console.log(sortedAreas[0]);
 // Largest area: 4776100539
+// Largest area pt 2: 4650063000 => invalid
