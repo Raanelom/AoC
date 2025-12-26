@@ -154,7 +154,7 @@ class Area extends Edge {
     }
 }
 
-const coordinates: Coordinate[] = readFileSync('./example_input', 'utf-8').trim().split('\n')
+const coordinates: Coordinate[] = readFileSync('./input', 'utf-8').trim().split('\n')
     .map((point: string) => {
         const coordinates = point.split(",");
         return new Coordinate(parseInt(coordinates[0]), parseInt(coordinates[1]))
@@ -180,16 +180,34 @@ const knownCorners = new Map();
 
 for (const area of areas) {
     const edges = area.getEdges();
-    const interSections = edges.map((edge) => {
+    const intersections = edges.map((edge) => {
         const compareWith = edge.isVerticalLine() ? horizontalLines : verticalLines;
         const intersections = compareWith
             .filter((otherEdge) => !!otherEdge.intersect(edge))
-            .map((otherEdge) => otherEdge.intersect(edge)!);
+            .map((otherEdge) => ({ source: edge, intersectAt: otherEdge.intersect(edge)! }));
         return intersections;
-    });
-    console.log("edges", edges.toString(), "intersections", interSections)
+    }).flat();
     const corners = area.getCorners();
     let validCorners = true;
+    for (const intersection of intersections) {
+        const { source, intersectAt } = intersection;
+        if (source.isVerticalLine()) {
+            if (source.directionY === VerticalDirection.down) {
+                corners.push(new Coordinate(intersectAt.x, intersectAt.y + 1));
+            }
+            else {
+                corners.push(new Coordinate(intersectAt.x, intersectAt.y - 1));
+            }
+        }
+        else {
+            if (source.directionX === HorizontalDirection.right) {
+                corners.push(new Coordinate(intersectAt.x + 1, intersectAt.y));
+            }
+            else {
+                corners.push(new Coordinate(intersectAt.x - 1, intersectAt.y));
+            }
+        }
+    }
     /// TODO: do not only check corners, but every coordinate on the line => or check if there's any additional intersection with another line
     for (const corner of corners) {
         const cornerKey = JSON.stringify(corner);
@@ -258,7 +276,7 @@ for (const area of areas) {
         validCorners = validCorners && validVertical && validHorizontal;
         knownCorners.set(cornerKey, validCorners);
         if (!validCorners) {
-            console.log("\nInvalid corner", corner);
+            // console.log("\nInvalid corner", corner);
             break;
         }
     }
@@ -274,4 +292,5 @@ const sortedAreas = validAreas
 
 console.log(sortedAreas[0]);
 // Largest area: 4776100539
-// Largest area pt 2: 4650063000 => invalid
+// Largest area pt 2: 4650063000 => invalid, too high
+// Largest area pt 2: 2997770932 => invalid, too high
