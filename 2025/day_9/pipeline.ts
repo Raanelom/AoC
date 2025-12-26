@@ -43,15 +43,28 @@ class Coordinate {
     }
 }
 
-class Area {
+enum Direction {
+    left,
+    right,
+    up,
+    down,
+    neutral
+}
+
+class Edge {
     a: Coordinate;
     b: Coordinate;
-    area: number;
+
+    directionX: Direction;
+    directionY: Direction;
 
     constructor(a: Coordinate, b: Coordinate) {
         this.a = a;
         this.b = b;
-        this.area = a.area(b);
+        const xDiff = b.x - a.x;
+        const yDiff = b.y - a.y;
+        this.directionX = xDiff < 0 ? Direction.left : xDiff > 0 ? Direction.right : Direction.neutral;
+        this.directionY = yDiff < 0 ? Direction.up : yDiff > 0 ? Direction.down : Direction.neutral;
     }
 
     isVerticalLine = () => this.a.x === this.b.x;
@@ -60,6 +73,7 @@ class Area {
     isInVerticalRange = (other: Coordinate) => {
         const minY = Math.min(this.a.y, this.b.y);
         const maxY = Math.max(this.a.y, this.b.y);
+
         return other.y <= maxY && other.y >= minY;
     }
 
@@ -68,6 +82,18 @@ class Area {
         const maxX = Math.max(this.a.x, this.b.x);
         
         return other.x <= maxX && other.x >= minX;
+    }
+
+    // isEndpoint = (other: Coordinate) =>
+    //     this.a.equals(other) || this.b.equals(other);
+}
+
+class Area extends Edge {
+    area: number;
+
+    constructor(a: Coordinate, b: Coordinate) {
+        super(a, b);
+        this.area = a.area(b);
     }
 
     getCorners = () => {
@@ -85,6 +111,7 @@ const coordinates: Coordinate[] = readFileSync('./example_input', 'utf-8').trim(
     });
 
 const areas: Area[] = [];
+const edges: Edge[] = [];
 
 for (let i = 0; i < coordinates.length; i++) {
     for(let j = (i + 1); j < coordinates.length; j++) {
@@ -92,10 +119,11 @@ for (let i = 0; i < coordinates.length; i++) {
         const cornerTwo = coordinates[j];
         areas.push(new Area(cornerOne, cornerTwo));
     }
+    edges.push(new Edge(coordinates[i], coordinates[(i + 1) % coordinates.length]));
 }
 
-const verticalLines = areas.filter((a) => a.isVerticalLine());
-const horizontalLines = areas.filter((a) => a.isHorizontalLine());
+const verticalLines = edges.filter((a) => a.isVerticalLine());
+const horizontalLines = edges.filter((a) => a.isHorizontalLine());
 
 const validAreas: Area[] = [];
 const knownCorners = new Map();
@@ -103,6 +131,7 @@ const knownCorners = new Map();
 for (const area of areas) {
     const corners = area.getCorners();
     let validCorners = true;
+    /// TODO: do not only check corners, but every coordinate on the line => or check if there's any additional intersection with another line
     for (const corner of corners) {
         const cornerKey = JSON.stringify(corner);
         if (knownCorners.has(cornerKey)) {
@@ -110,19 +139,75 @@ for (const area of areas) {
             continue;
         }
         const verticalAxes = verticalLines
-            .filter((a) => a.isInVerticalRange(corner))
-            .map((area) => area.a.x)
-            .sort((a, b) => b - a);
+            .filter((a) => a.isInVerticalRange(corner));
         const horizontalAxes = horizontalLines
             .filter((a) => a.isInHorizontalRange(corner))
+            .filter((current, index, list) => {
+            // check if there are subsequent horizontal axes with identical directions and overlapping x coordinates / are connected by a vertical line
+            // Preserve only the closest
+            const next = list[index + 1 % list.length];
+            const prev = list.slice(index - 1)[0];
+            return !(current.directionX === next?.directionX
+                // Only remove this edge if it's further than the next one
+                && Math.abs(current.a.y - corner.y) > Math.abs(next.a.y - corner.y)
+                && (current.b.x === next?.a.x && current.b.x === corner.x) 
+                && verticalLines.some((vEdge) => vEdge.a.equals(current.b) && vEdge.b.equals(next.a)))
+            && !(current.directionX === prev?.directionX
+                // Only remove this edge if it's further than the previous one
+                && Math.abs(current.a.y - corner.y) > Math.abs(prev.a.y - corner.y)
+                && (current.a.x === prev?.b.x && current.a.x === corner.x) 
+                && verticalLines.some((vEdge) => vEdge.a.equals(prev?.b) && vEdge.b.equals(current.a)));
+        });
+
+        // const findOverlap =horizontalLines
+        //     .filter((a) => a.isInHorizontalRange(corner))
+        //     .filter((current, index, list) => {
+        //     // check if there are subsequent horizontal axes with identical directions and overlapping x coordinates / are connected by a vertical line
+        //     // Preserve only the closest
+        //     const next = list[(index + 1) % list.length];
+        //     const prev = list.slice(index - 1)[0];
+        //     if (corner.equals(new Coordinate(9, 3))) {
+        //         console.log("\nCompare");
+        //         console.log("Current", current);
+        //         console.log("Previous", prev);
+        //         console.log("Direction identical?", current.directionX === prev?.directionX);
+        //         console.log("y-value higher?", Math.abs(current.a.y - corner.y) < Math.abs(prev.a.y - corner.y));
+        //     }
+        //     return (current.directionX === next?.directionX
+        //         // Only remove this edge if it's further than the next one
+        //         && Math.abs(current.a.y - corner.y) > Math.abs(next.a.y - corner.y)
+        //         && (current.b.x === next?.a.x && current.b.x === corner.x) 
+        //         && verticalLines.some((vEdge) => vEdge.a.equals(current.b) && vEdge.b.equals(next.a)))
+        //     || (current.directionX === prev?.directionX
+        //         // Only remove this edge if it's further than the previous one
+        //         && Math.abs(current.a.y - corner.y) > Math.abs(prev.a.y - corner.y)
+        //         && (current.a.x === prev?.b.x && current.a.x === corner.x) 
+        //         && verticalLines.some((vEdge) => vEdge.a.equals(prev?.b) && vEdge.b.equals(current.a)));
+        // });
+
+        // if (corner.equals(new Coordinate(9, 3))) {
+        //     console.log("HIERRO");
+        //     console.log(findOverlap);
+        // }
+
+        // if (findOverlap.length) {
+        //     console.log("Overlap", findOverlap, "for corner", corner);
+        // }
+
+        const verticalSelect = verticalAxes
+            .map((area) => area.a.x)
+            .sort((a, b) => b - a);
+        const horizontalSelect = horizontalAxes
             .map((area) => area.a.y)
             .sort((a, b) => b - a);
 
-        const alwaysValid = horizontalAxes.includes(corner.y) || verticalAxes.includes(corner.x);
-        const validHline = alwaysValid 
-            || !!horizontalAxes.find((val, index) => val < corner.y && corner.y > (horizontalAxes?.[index + 1] || -1) && index % 2 === 1);
+        const alwaysValid = horizontalSelect.includes(corner.y) || verticalSelect.includes(corner.x);
+
         const validVline = alwaysValid
-            || !!verticalAxes.find((val, index) => val < corner.x && corner.x > (verticalAxes?.[index + 1] || -1) && index % 2 === 1);
+            || !!verticalSelect.find((val, index) => val < corner.x && corner.x > (verticalSelect?.[index + 1] || -1) && index % 2 === 1);
+        const validHline = alwaysValid 
+            || !!horizontalSelect.find((val, index) => val < corner.y && corner.y > (horizontalSelect?.[index + 1] || -1) && index % 2 === 1);
+        
         // console.log("looking for vline for corner", corner, "in axes", verticalAxesSelect, verticalAxesSelect.find((val) => val < corner.x));
         // console.log("\nvalid vline", corner,  validVline);
         // console.log("valid hline", corner, validHline);
@@ -137,6 +222,7 @@ for (const area of areas) {
             // console.log(verticalAxes.find((val, index) => val < corner.y && corner.x > (verticalAxes?.[index + 1] || -1)));
             validCorners = false;
             knownCorners.set(cornerKey, validCorners);
+            console.log("Invalid corner", corner);
             break;
         }
     }

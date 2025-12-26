@@ -7,6 +7,6 @@
         "node": ">=24"
     },
     "scripts": {
-        "aoc": "node pipeline.ts"
+        "aoc": "node --experimental-transform-types pipeline.ts"
     }
 }
