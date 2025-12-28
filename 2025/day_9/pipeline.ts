@@ -35,11 +35,6 @@ function intersect(a: Coordinate, b: Coordinate, c: Coordinate, d: Coordinate) {
 
     const newCoord = new Coordinate(x, y);
 
-    // if ((a.equals(newCoord) || b.equals(newCoord))) {
-    //     // We only want a 100% intersection (no edges of edges)
-    //     return null;
-    // }
-
 	return new Coordinate(x, y);
 }
 
