@@ -47,33 +47,17 @@ const findPaths = (
         }
     }
 
-    const reversePaths = new Map<string, string[]>();
-    reversePaths.set(from, [from]);
-
     const noOfPaths = new Map<string, number>();
     noOfPaths.set(from, 1);
 
     for (const node of order) {
-        const prev = reversePaths.get(node) || [];
         if (edges.has(node)) {
             for (const next of edges.get(node)!) {
                 noOfPaths.set(next, (noOfPaths.get(next) || 0) + (noOfPaths.get(node) || 0));
-                // console.log(node, next);
-                const nextPaths = reversePaths.get(next) || [];
-                for (const prevPath of prev) {
-                    // console.log(prevPath);
-                    if (next !== "out" || (prevPath.includes("fft") && prevPath.includes("dac"))) {
-                        nextPaths?.push(prevPath + " " + next);
-                    }
-                }
-                reversePaths.set(next, nextPaths);
             }
-            // console.log("delete");
-            reversePaths.delete(node);
         }
     }
-    console.log(noOfPaths.get(to));
-    return reversePaths.get(to);
+    return noOfPaths.get(to);
 }
 
 const exec = () => {
@@ -91,23 +75,19 @@ const exec = () => {
 
     const sortedEdges = new Map([...edges.entries()].sort((a, b) => a[1].length - b[1].length));
 
-    // const start = edges.get("you");
+    const svrToFFT = findPaths("svr", "fft", sortedEdges)!;
+    const svrToDAC = findPaths("svr", "dac", sortedEdges)!;
+    const fftToDac = findPaths("fft", "dac", sortedEdges)!;
+    const dacToFFT = findPaths("dac", "fft", sortedEdges)!;
+    const fftToOut = findPaths("fft", "out", sortedEdges)!;
+    const dacToOut = findPaths("dac", "out", sortedEdges)!;
 
-    // console.log(edges);
-    // console.log(start);
-    // Ideas:
-    // - Multiple "find shortest path"-algorithm, excluding previously found shortest paths
-    // - Bread-first-search
-    const paths = findPaths("svr", "out", sortedEdges);
-    // const pathsToFFT = findPaths("svr", "fft", sortedEdges);
-    // const pathsToDAC = findPaths("svr", "dac", sortedEdges);
-    // const pathsFromFFT = findPaths("fft", "out", sortedEdges);
-    // const pathsFromDAC = findPaths("dac", "out", sortedEdges);
-    console.log(paths);
-    // console.log("Paths to fft", pathsToFFT);
-    // console.log("Paths to dac", pathsToDAC);
-    // console.log("Paths from fft", pathsFromFFT);
-    // console.log("Paths from dac", pathsFromDAC);
+    const stepOne = Math.min(svrToFFT, svrToDAC);
+    const stepTwo = Math.max(fftToDac, dacToFFT);
+    const stepThree = Math.min(fftToOut, dacToOut);
+
+    console.log("Steps", stepOne, stepTwo, stepThree);
+    console.log("Final", stepOne * stepTwo * stepThree);
 }
 
 exec();
