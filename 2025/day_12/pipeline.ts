@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-    const parseInput = () => {
+const parseInput = () => {
     const input: string[][] = readFileSync('./example_input', 'utf-8')
         .trim()
         .split('\n\n')
@@ -12,19 +12,14 @@ import { readFileSync } from 'fs';
     const regions = input.splice(-1).flat();
     const presents = input;
 
-    // console.log(regions);
-
-    // const regionWithPresents:  = [];
-
     const output = regions.map((region) => {
         const [size, ...positions] = region.split(": ")
             .map((item, index) => index > 0 ? item.split(" ").map((no) => parseInt(no)).flat() : [item.split("x").map((size) => parseInt(size))])
             .flat();
-        // console.log(size, positions);
         const selectedPresents = positions
             .map((present, index) => new Array<string[]>(present as number).fill(presents[index]))
             .flat();
-        return { size: size as number, selectedPresents }
+        return { size: size as number[], selectedPresents }
     });
 
     return output
@@ -33,5 +28,7 @@ import { readFileSync } from 'fs';
 const input = parseInput();
 
 for (const line of input) {
-    console.log(line);
+    // TODO: think of something better than dots
+    const region = new Array(line.size[1]).fill(new Array(line.size[0]).fill("."));
+    console.log(region);
 }
